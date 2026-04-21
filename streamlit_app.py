@@ -1,4 +1,4 @@
-"""
+﻿"""
 TrackMyPDB - Streamlit Application
 @author Anu Gamage
 
@@ -368,7 +368,7 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.selectbox(
         "Choose Analysis Type",
-        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", "� SMILES Database Search", "�📊 Complete Pipeline"]
+        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", "🔬 SMILES Database Search", "📊 Complete Pipeline"]
     )
     
     # Add watermark at bottom of sidebar
@@ -380,9 +380,9 @@ def main():
         show_extraction_page()
     elif page == "🧪 Similarity Analysis":
         show_similarity_page()
-    elif page == "� SMILES Database Search":
+    elif page == "🔬 SMILES Database Search":
         show_smiles_database_search()
-    elif page == "�📊 Complete Pipeline":
+    elif page == "📊 Complete Pipeline":
         show_complete_pipeline()
     
     # Show footer

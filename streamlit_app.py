@@ -74,9 +74,6 @@ def get_pdb_protein_info(pdb_id):
                 }
                 uniprot_ids
               }
-              entity_poly {
-                pdbx_description
-              }
               rcsb_polymer_entity {
                 pdbx_description
               }
@@ -101,6 +98,10 @@ def get_pdb_protein_info(pdb_id):
         
         uniprot_ids = []
         protein_names = []
+        
+        # Check for errors in response
+        if 'errors' in data:
+            return {'uniprot_ids': [], 'protein_names': [], 'error': str(data['errors'])}
         
         # Parse response
         if 'data' in data and data['data'] and 'entry' in data['data']:
@@ -127,11 +128,6 @@ def get_pdb_protein_info(pdb_id):
                                         uniprot_ids.append(acc)
                     
                     # Extract protein descriptions
-                    if 'entity_poly' in entity and entity['entity_poly']:
-                        desc = entity['entity_poly'].get('pdbx_description')
-                        if desc and desc not in protein_names:
-                            protein_names.append(desc)
-                    
                     if 'rcsb_polymer_entity' in entity and entity['rcsb_polymer_entity']:
                         desc = entity['rcsb_polymer_entity'].get('pdbx_description')
                         if desc and desc not in protein_names:
@@ -1046,9 +1042,9 @@ def show_smiles_database_search():
         
         # Fetch protein information if button was clicked
         if fetch_button:
-            with st.spinner("Fetching protein information from RCSB PDB..."):
-                enriched_df = enrich_results_with_protein_info(final_results.copy())
-                st.session_state['enriched_results'] = enriched_df
+            st.info("🔄 Fetching protein information from RCSB PDB...")
+            enriched_df = enrich_results_with_protein_info(final_results.copy())
+            st.session_state['enriched_results'] = enriched_df
         
         # Display enriched results if available
         if 'enriched_results' in st.session_state:

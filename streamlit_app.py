@@ -876,6 +876,12 @@ def show_smiles_database_search():
             st.error("Please enter at least one target SMILES structure")
             return
         
+        # Clear any existing enriched results from previous searches
+        if 'enriched_results' in st.session_state:
+            del st.session_state['enriched_results']
+        if 'enriched_top_n' in st.session_state:
+            del st.session_state['enriched_top_n']
+        
         # Parse SMILES input
         smiles_list = [s.strip() for s in target_smiles.strip().split('\n') if s.strip()]
         
@@ -958,13 +964,13 @@ def show_smiles_database_search():
                 # Sort by similarity score
                 final_results = final_results.sort_values('Tanimoto_Similarity', ascending=False).reset_index(drop=True)
                 
-                # Limit to top_n results after combining all SMILES searches
-                final_results = final_results.head(top_n)
-                
-                # Store results
+                # Store ALL results in session state (don't limit here)
                 st.session_state['smiles_search_results'] = final_results
                 
-                st.success(f"🎉 Search completed! Found {len(final_results)} total matches (top {top_n} shown)")
+                # Apply top_n limit for initial display
+                display_results = final_results.head(top_n)
+                
+                st.success(f"🎉 Search completed! Found {len(final_results)} total matches (showing top {top_n})")
                 
                 # Display results
                 st.markdown('<div class="section-header">📊 Search Results</div>', unsafe_allow_html=True)
@@ -973,19 +979,19 @@ def show_smiles_database_search():
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
-                    st.metric("Total Matches", len(final_results))
+                    st.metric("Total Matches", len(display_results))
                 with col2:
-                    st.metric("Best Similarity", f"{final_results['Tanimoto_Similarity'].max():.4f}")
+                    st.metric("Best Similarity", f"{display_results['Tanimoto_Similarity'].max():.4f}")
                 with col3:
-                    st.metric("Unique PDB IDs", final_results['PDB_ID'].nunique())
+                    st.metric("Unique PDB IDs", display_results['PDB_ID'].nunique())
                 with col4:
-                    st.metric("Avg Similarity", f"{final_results['Tanimoto_Similarity'].mean():.4f}")
+                    st.metric("Avg Similarity", f"{display_results['Tanimoto_Similarity'].mean():.4f}")
                 
                 # Results table
                 st.subheader("📋 Top Matches")
                 
                 # Display with better formatting
-                display_df = final_results.copy()
+                display_df = display_results.copy()
                 display_df['Tanimoto_Similarity'] = display_df['Tanimoto_Similarity'].round(4)
                 
                 st.dataframe(
@@ -1020,7 +1026,13 @@ def show_smiles_database_search():
     # Protein Information Enrichment Section (outside search execution)
     # This section persists across reruns using session state
     if 'smiles_search_results' in st.session_state and len(st.session_state['smiles_search_results']) > 0:
-        final_results = st.session_state['smiles_search_results']
+        # Get stored results and apply current top_n limit dynamically
+        all_stored_results = st.session_state['smiles_search_results']
+        final_results = all_stored_results.head(top_n)
+        
+        # Update the displayed results count message
+        if len(all_stored_results) > top_n:
+            st.info(f"ℹ️ Showing top {top_n} results out of {len(all_stored_results)} total matches. Adjust the 'Number of Top Results' slider and the display will update automatically.")
         
         st.markdown("---")
         st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
@@ -1049,10 +1061,17 @@ def show_smiles_database_search():
             st.info("🔄 Fetching protein information from RCSB PDB...")
             enriched_df = enrich_results_with_protein_info(final_results.copy())
             st.session_state['enriched_results'] = enriched_df
+            st.session_state['enriched_top_n'] = top_n  # Store the top_n value used for enrichment
         
         # Display enriched results if available
         if 'enriched_results' in st.session_state:
             enriched_df = st.session_state['enriched_results']
+            
+            # Check if top_n has changed since enrichment
+            if st.session_state.get('enriched_top_n', top_n) != top_n:
+                st.warning(f"⚠️ Note: Protein information was fetched for top {st.session_state.get('enriched_top_n', 'N')} results, but you're now viewing top {top_n}. Click 'Fetch Protein Information' again to update.")
+                # Apply current top_n to enriched results
+                enriched_df = enriched_df.head(top_n)
             
             st.subheader("📋 Enriched Results with Protein Information")
             

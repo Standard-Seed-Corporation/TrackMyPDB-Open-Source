@@ -330,7 +330,7 @@ def show_sidebar_watermark():
         backdrop-filter: blur(10px);
     ">
         <strong>Developed and released by Standard Seed Corporation</strong><br>
-        <small style="color: #666;">TrackMyPDB V 1.0</small>
+        <small style="color: #666;">TrackMyPDB V 2.0</small>
     </div>
     """, unsafe_allow_html=True)
     

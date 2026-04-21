@@ -984,6 +984,9 @@ def show_smiles_database_search():
         all_stored_results = st.session_state['smiles_search_results']
         final_results = all_stored_results.head(top_n)
         
+        # Debug info
+        st.caption(f"🔍 Debug: Slider value = {top_n}, Total stored = {len(all_stored_results)}, Displaying = {len(final_results)}")
+        
         # Update the displayed results count message
         if len(all_stored_results) > top_n:
             st.info(f"ℹ️ Showing top {top_n} results out of {len(all_stored_results)} total matches. Adjust the 'Number of Top Results' slider and the display will update automatically.")

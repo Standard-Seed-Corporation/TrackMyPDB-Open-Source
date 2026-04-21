@@ -49,6 +49,7 @@ def get_base64_image(image_path):
 def get_pdb_protein_info(pdb_id):
     """
     Fetch protein information (UniProt IDs and protein names) for a given PDB ID
+    using RCSB PDB GraphQL API for more reliable data retrieval
     
     Args:
         pdb_id (str): PDB ID
@@ -57,78 +58,93 @@ def get_pdb_protein_info(pdb_id):
         dict: Dictionary with 'uniprot_ids' (list) and 'protein_names' (list)
     """
     try:
-        # Use RCSB PDB Data API to get entry information
-        url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id.upper()}"
-        response = requests.get(url, timeout=10)
+        pdb_id = pdb_id.upper()
+        
+        # Use GraphQL API for more reliable data
+        graphql_url = "https://data.rcsb.org/graphql"
+        
+        query = """
+        query ($pdbId: String!) {
+          entry(entry_id: $pdbId) {
+            polymer_entities {
+              rcsb_polymer_entity_container_identifiers {
+                reference_sequence_identifiers {
+                  database_accession
+                  database_name
+                }
+                uniprot_ids
+              }
+              entity_poly {
+                pdbx_description
+              }
+              rcsb_polymer_entity {
+                pdbx_description
+              }
+            }
+          }
+        }
+        """
+        
+        variables = {"pdbId": pdb_id}
+        
+        response = requests.post(
+            graphql_url,
+            json={"query": query, "variables": variables},
+            headers={"Content-Type": "application/json"},
+            timeout=15
+        )
         
         if response.status_code != 200:
             return {'uniprot_ids': [], 'protein_names': []}
         
         data = response.json()
         
-        # Get polymer entities (proteins)
-        polymer_url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id.upper()}/1"
-        polymer_response = requests.get(polymer_url, timeout=10)
-        
         uniprot_ids = []
         protein_names = []
         
-        if polymer_response.status_code == 200:
-            polymer_data = polymer_response.json()
+        # Parse response
+        if 'data' in data and data['data'] and 'entry' in data['data']:
+            entry = data['data']['entry']
             
-            # Extract UniProt IDs
-            if 'rcsb_polymer_entity_container_identifiers' in polymer_data:
-                identifiers = polymer_data['rcsb_polymer_entity_container_identifiers']
-                if 'uniprot_ids' in identifiers:
-                    uniprot_ids = identifiers['uniprot_ids']
-            
-            # Extract protein names/descriptions
-            if 'rcsb_polymer_entity' in polymer_data:
-                entity = polymer_data['rcsb_polymer_entity']
-                if 'pdbx_description' in entity:
-                    protein_names.append(entity['pdbx_description'])
-            
-            if 'entity' in polymer_data:
-                entity_info = polymer_data['entity']
-                if 'pdbx_description' in entity_info:
-                    desc = entity_info['pdbx_description']
-                    if desc and desc not in protein_names:
-                        protein_names.append(desc)
-        
-        # Try to get more entities if available
-        for entity_id in range(1, 5):  # Check up to 4 entities
-            try:
-                entity_url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id.upper()}/{entity_id}"
-                entity_response = requests.get(entity_url, timeout=5)
-                
-                if entity_response.status_code == 200:
-                    entity_data = entity_response.json()
-                    
+            if entry and 'polymer_entities' in entry:
+                for entity in entry['polymer_entities']:
                     # Extract UniProt IDs
-                    if 'rcsb_polymer_entity_container_identifiers' in entity_data:
-                        identifiers = entity_data['rcsb_polymer_entity_container_identifiers']
-                        if 'uniprot_ids' in identifiers:
+                    if 'rcsb_polymer_entity_container_identifiers' in entity:
+                        identifiers = entity['rcsb_polymer_entity_container_identifiers']
+                        
+                        # Direct uniprot_ids field
+                        if 'uniprot_ids' in identifiers and identifiers['uniprot_ids']:
                             for uid in identifiers['uniprot_ids']:
-                                if uid not in uniprot_ids:
+                                if uid and uid not in uniprot_ids:
                                     uniprot_ids.append(uid)
+                        
+                        # From reference_sequence_identifiers
+                        if 'reference_sequence_identifiers' in identifiers:
+                            for ref in identifiers['reference_sequence_identifiers']:
+                                if ref.get('database_name') == 'UniProt':
+                                    acc = ref.get('database_accession')
+                                    if acc and acc not in uniprot_ids:
+                                        uniprot_ids.append(acc)
                     
-                    # Extract protein names
-                    if 'rcsb_polymer_entity' in entity_data:
-                        entity_info = entity_data['rcsb_polymer_entity']
-                        if 'pdbx_description' in entity_info:
-                            desc = entity_info['pdbx_description']
-                            if desc and desc not in protein_names:
-                                protein_names.append(desc)
-            except:
-                break  # Stop if entity doesn't exist
+                    # Extract protein descriptions
+                    if 'entity_poly' in entity and entity['entity_poly']:
+                        desc = entity['entity_poly'].get('pdbx_description')
+                        if desc and desc not in protein_names:
+                            protein_names.append(desc)
+                    
+                    if 'rcsb_polymer_entity' in entity and entity['rcsb_polymer_entity']:
+                        desc = entity['rcsb_polymer_entity'].get('pdbx_description')
+                        if desc and desc not in protein_names:
+                            protein_names.append(desc)
         
         return {
-            'uniprot_ids': uniprot_ids if uniprot_ids else [],
-            'protein_names': protein_names if protein_names else []
+            'uniprot_ids': uniprot_ids,
+            'protein_names': protein_names
         }
         
     except Exception as e:
-        return {'uniprot_ids': [], 'protein_names': []}
+        # Log error for debugging
+        return {'uniprot_ids': [], 'protein_names': [], 'error': str(e)}
 
 def enrich_results_with_protein_info(results_df):
     """
@@ -147,19 +163,44 @@ def enrich_results_with_protein_info(results_df):
     
     progress_text = st.empty()
     progress_bar = st.progress(0)
+    status_container = st.container()
+    
+    success_count = 0
+    error_count = 0
     
     for idx, pdb_id in enumerate(unique_pdbs):
         progress_text.text(f"Fetching protein information for {pdb_id} ({idx + 1}/{len(unique_pdbs)})...")
         progress_bar.progress((idx + 1) / len(unique_pdbs))
         
-        info = get_pdb_protein_info(pdb_id)
-        pdb_info_cache[pdb_id] = info
-        
-        # Small delay to avoid rate limiting
-        time.sleep(0.1)
+        try:
+            info = get_pdb_protein_info(pdb_id)
+            pdb_info_cache[pdb_id] = info
+            
+            # Check if data was retrieved
+            if info.get('uniprot_ids') or info.get('protein_names'):
+                success_count += 1
+            elif 'error' in info:
+                error_count += 1
+                with status_container:
+                    st.warning(f"⚠️ Error fetching {pdb_id}: {info.get('error', 'Unknown error')}")
+            
+            # Small delay to avoid rate limiting
+            time.sleep(0.15)
+        except Exception as e:
+            error_count += 1
+            pdb_info_cache[pdb_id] = {'uniprot_ids': [], 'protein_names': []}
+            with status_container:
+                st.warning(f"⚠️ Failed to fetch {pdb_id}: {str(e)}")
     
     progress_text.empty()
     progress_bar.empty()
+    
+    # Show summary
+    with status_container:
+        if success_count > 0:
+            st.success(f"✅ Successfully fetched protein information for {success_count}/{len(unique_pdbs)} PDB structures")
+        if error_count > 0:
+            st.info(f"ℹ️ {error_count} PDB structures had no protein information or encountered errors")
     
     # Add columns to results
     results_df['UniProt_IDs'] = results_df['PDB_ID'].apply(
@@ -982,23 +1023,20 @@ def show_smiles_database_search():
                 col1, col2, col3 = st.columns([1, 1, 2])
                 
                 with col1:
-                    if st.button("🔍 Fetch Protein Information", type="primary"):
-                        st.session_state['fetch_protein_info'] = True
+                    fetch_button = st.button("🔍 Fetch Protein Information", type="primary")
                 
                 with col2:
-                    if 'enriched_results' in st.session_state and st.button("🗑️ Clear Protein Info"):
-                        if 'enriched_results' in st.session_state:
-                            del st.session_state['enriched_results']
-                        st.session_state['fetch_protein_info'] = False
-                        st.rerun()
+                    if 'enriched_results' in st.session_state:
+                        if st.button("🗑️ Clear Protein Info"):
+                            if 'enriched_results' in st.session_state:
+                                del st.session_state['enriched_results']
+                            st.rerun()
                 
                 # Fetch protein information if button was clicked
-                if st.session_state.get('fetch_protein_info', False):
+                if fetch_button:
                     with st.spinner("Fetching protein information from RCSB PDB..."):
                         enriched_df = enrich_results_with_protein_info(final_results.copy())
                         st.session_state['enriched_results'] = enriched_df
-                    
-                    st.success("✅ Protein information fetched successfully!")
                 
                 # Display enriched results if available
                 if 'enriched_results' in st.session_state:

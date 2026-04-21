@@ -958,10 +958,13 @@ def show_smiles_database_search():
                 # Sort by similarity score
                 final_results = final_results.sort_values('Tanimoto_Similarity', ascending=False).reset_index(drop=True)
                 
+                # Limit to top_n results after combining all SMILES searches
+                final_results = final_results.head(top_n)
+                
                 # Store results
                 st.session_state['smiles_search_results'] = final_results
                 
-                st.success(f"🎉 Search completed! Found {len(final_results)} total matches")
+                st.success(f"🎉 Search completed! Found {len(final_results)} total matches (top {top_n} shown)")
                 
                 # Display results
                 st.markdown('<div class="section-header">📊 Search Results</div>', unsafe_allow_html=True)
@@ -988,6 +991,7 @@ def show_smiles_database_search():
                 st.dataframe(
                     display_df,
                     use_container_width=True,
+                    height=min(400 + (len(display_df) * 35), 800),  # Dynamic height based on number of rows
                     column_config={
                         "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="medium"),
                         "PDB_ID": "PDB ID",
@@ -1059,6 +1063,7 @@ def show_smiles_database_search():
             st.dataframe(
                 display_enriched,
                 use_container_width=True,
+                height=min(400 + (len(display_enriched) * 35), 800),  # Dynamic height based on number of rows
                 column_config={
                     "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="small"),
                     "PDB_ID": "PDB ID",

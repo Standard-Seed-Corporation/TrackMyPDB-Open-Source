@@ -967,53 +967,7 @@ def show_smiles_database_search():
                 # Store ALL results in session state (don't limit here)
                 st.session_state['smiles_search_results'] = final_results
                 
-                # Apply top_n limit for initial display
-                display_results = final_results.head(top_n)
-                
-                st.success(f"🎉 Search completed! Found {len(final_results)} total matches (showing top {top_n})")
-                
-                # Display results
-                st.markdown('<div class="section-header">📊 Search Results</div>', unsafe_allow_html=True)
-                
-                # Summary metrics
-                col1, col2, col3, col4 = st.columns(4)
-                
-                with col1:
-                    st.metric("Total Matches", len(display_results))
-                with col2:
-                    st.metric("Best Similarity", f"{display_results['Tanimoto_Similarity'].max():.4f}")
-                with col3:
-                    st.metric("Unique PDB IDs", display_results['PDB_ID'].nunique())
-                with col4:
-                    st.metric("Avg Similarity", f"{display_results['Tanimoto_Similarity'].mean():.4f}")
-                
-                # Results table
-                st.subheader("📋 Top Matches")
-                
-                # Display with better formatting
-                display_df = display_results.copy()
-                display_df['Tanimoto_Similarity'] = display_df['Tanimoto_Similarity'].round(4)
-                
-                st.dataframe(
-                    display_df,
-                    use_container_width=True,
-                    height=min(400 + (len(display_df) * 35), 800),  # Dynamic height based on number of rows
-                    column_config={
-                        "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="medium"),
-                        "PDB_ID": "PDB ID",
-                        "Heteroatom_Code": "Ligand Code",
-                        "Chemical_Name": "Chemical Name",
-                        "Database_SMILES": st.column_config.TextColumn("Database SMILES", width="medium"),
-                        "Tanimoto_Similarity": st.column_config.NumberColumn(
-                            "Similarity Score",
-                            help="Tanimoto similarity score (0-1, higher is better)",
-                            format="%.4f"
-                        ),
-                        "Formula": "Molecular Formula",
-                        "Status": "Status"
-                    },
-                    hide_index=True
-                )
+                st.success(f"🎉 Search completed! Found {len(final_results)} total matches. Scroll down to view results.")
             
             else:
                 st.error("No matches found for any of the input SMILES structures")
@@ -1033,6 +987,49 @@ def show_smiles_database_search():
         # Update the displayed results count message
         if len(all_stored_results) > top_n:
             st.info(f"ℹ️ Showing top {top_n} results out of {len(all_stored_results)} total matches. Adjust the 'Number of Top Results' slider and the display will update automatically.")
+        
+        # Display results section
+        st.markdown('<div class="section-header">📊 Search Results</div>', unsafe_allow_html=True)
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Showing", len(final_results))
+        with col2:
+            st.metric("Best Similarity", f"{final_results['Tanimoto_Similarity'].max():.4f}")
+        with col3:
+            st.metric("Unique PDB IDs", final_results['PDB_ID'].nunique())
+        with col4:
+            st.metric("Avg Similarity", f"{final_results['Tanimoto_Similarity'].mean():.4f}")
+        
+        # Results table
+        st.subheader("📋 Top Matches")
+        
+        # Display with better formatting
+        display_df = final_results.copy()
+        display_df['Tanimoto_Similarity'] = display_df['Tanimoto_Similarity'].round(4)
+        
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            height=min(400 + (len(display_df) * 35), 800),  # Dynamic height based on number of rows
+            column_config={
+                "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="medium"),
+                "PDB_ID": "PDB ID",
+                "Heteroatom_Code": "Ligand Code",
+                "Chemical_Name": "Chemical Name",
+                "Database_SMILES": st.column_config.TextColumn("Database SMILES", width="medium"),
+                "Tanimoto_Similarity": st.column_config.NumberColumn(
+                    "Similarity Score",
+                    help="Tanimoto similarity score (0-1, higher is better)",
+                    format="%.4f"
+                ),
+                "Formula": "Molecular Formula",
+                "Status": "Status"
+            },
+            hide_index=True
+        )
         
         st.markdown("---")
         st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)

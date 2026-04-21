@@ -1008,200 +1008,6 @@ def show_smiles_database_search():
                     },
                     hide_index=True
                 )
-                
-                # Protein Information Enrichment Section
-                st.markdown("---")
-                st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
-                
-                st.markdown("""
-                Fetch additional protein information for the PDB structures found in your search results.
-                This will query the RCSB PDB database to retrieve:
-                - **UniProt IDs** associated with each PDB structure
-                - **Protein names/descriptions** for each target
-                """)
-                
-                col1, col2, col3 = st.columns([1, 1, 2])
-                
-                with col1:
-                    fetch_button = st.button("🔍 Fetch Protein Information", type="primary")
-                
-                with col2:
-                    if 'enriched_results' in st.session_state:
-                        if st.button("🗑️ Clear Protein Info"):
-                            if 'enriched_results' in st.session_state:
-                                del st.session_state['enriched_results']
-                            st.rerun()
-                
-                # Fetch protein information if button was clicked
-                if fetch_button:
-                    with st.spinner("Fetching protein information from RCSB PDB..."):
-                        enriched_df = enrich_results_with_protein_info(final_results.copy())
-                        st.session_state['enriched_results'] = enriched_df
-                
-                # Display enriched results if available
-                if 'enriched_results' in st.session_state:
-                    enriched_df = st.session_state['enriched_results']
-                    
-                    st.subheader("📋 Enriched Results with Protein Information")
-                    
-                    # Display enriched table
-                    display_enriched = enriched_df.copy()
-                    display_enriched['Tanimoto_Similarity'] = display_enriched['Tanimoto_Similarity'].round(4)
-                    
-                    st.dataframe(
-                        display_enriched,
-                        use_container_width=True,
-                        column_config={
-                            "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="small"),
-                            "PDB_ID": "PDB ID",
-                            "Heteroatom_Code": "Ligand",
-                            "Chemical_Name": "Ligand Name",
-                            "Database_SMILES": st.column_config.TextColumn("SMILES", width="small"),
-                            "Tanimoto_Similarity": st.column_config.NumberColumn(
-                                "Similarity",
-                                format="%.4f"
-                            ),
-                            "Formula": "Formula",
-                            "Status": "Status",
-                            "UniProt_IDs": st.column_config.TextColumn("UniProt IDs", width="medium"),
-                            "Protein_Names": st.column_config.TextColumn("Protein Names", width="large")
-                        },
-                        hide_index=True
-                    )
-                    
-                    # Summary of protein targets
-                    st.markdown("---")
-                    st.subheader("📊 Protein Target Summary")
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        # Count unique proteins
-                        unique_proteins = enriched_df[enriched_df['UniProt_IDs'] != 'N/A']['UniProt_IDs'].unique()
-                        st.metric("Unique Protein Targets", len(unique_proteins))
-                        
-                        # Show list of UniProt IDs
-                        if len(unique_proteins) > 0:
-                            st.markdown("**UniProt IDs Found:**")
-                            all_uniprots = set()
-                            for ids in unique_proteins:
-                                if ids != 'N/A':
-                                    all_uniprots.update([uid.strip() for uid in ids.split(',')])
-                            
-                            for uid in sorted(all_uniprots):
-                                st.markdown(f"- [{uid}](https://www.uniprot.org/uniprotkb/{uid})")
-                    
-                    with col2:
-                        # Show protein names
-                        unique_names = enriched_df[enriched_df['Protein_Names'] != 'N/A']['Protein_Names'].unique()
-                        st.metric("Unique Protein Names", len(unique_names))
-                        
-                        if len(unique_names) > 0:
-                            st.markdown("**Protein Names:**")
-                            all_names = set()
-                            for names in unique_names:
-                                if names != 'N/A':
-                                    all_names.update([n.strip() for n in names.split('|')])
-                            
-                            for name in sorted(all_names)[:10]:  # Show top 10
-                                st.markdown(f"- {name}")
-                            
-                            if len(all_names) > 10:
-                                st.markdown(f"*...and {len(all_names) - 10} more*")
-                
-                # Download section
-                st.markdown("---")
-                st.subheader("📥 Download Results")
-                
-                # Determine which dataframe to use for downloads
-                download_df = st.session_state.get('enriched_results', final_results)
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Full results
-                    csv_data = download_df.to_csv(index=False)
-                    label = "📥 Download Enriched Results (CSV)" if 'enriched_results' in st.session_state else "📥 Download Complete Results (CSV)"
-                    st.download_button(
-                        label=label,
-                        data=csv_data,
-                        file_name=f"TrackMyPDB_SMILES_search_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        help="Download all search results with complete information"
-                    )
-                
-                with col2:
-                    # PDB IDs only
-                    if 'enriched_results' in st.session_state:
-                        pdb_protein_df = download_df[['PDB_ID', 'UniProt_IDs', 'Protein_Names', 'Tanimoto_Similarity']].drop_duplicates()
-                        pdb_protein_csv = pdb_protein_df.to_csv(index=False)
-                        st.download_button(
-                            label="📥 Download PDB-Protein Mapping (CSV)",
-                            data=pdb_protein_csv,
-                            file_name=f"TrackMyPDB_PDB_Protein_Mapping_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                            help="Download PDB IDs with associated UniProt IDs and protein names"
-                        )
-                    else:
-                        pdb_ids_df = download_df[['PDB_ID', 'Tanimoto_Similarity']].drop_duplicates()
-                        pdb_ids_csv = pdb_ids_df.to_csv(index=False)
-                        st.download_button(
-                            label="📥 Download PDB IDs Only (CSV)",
-                            data=pdb_ids_csv,
-                            file_name=f"TrackMyPDB_PDB_IDs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                            help="Download unique PDB IDs with their best similarity scores"
-                        )
-                
-                # Visualizations (if RDKit available)
-                if RDKIT_AVAILABLE and len(final_results) > 0:
-                    st.markdown('<div class="section-header">📈 Similarity Distribution</div>', unsafe_allow_html=True)
-                    
-                    try:
-                        import plotly.express as px
-                        import plotly.graph_objects as go
-                        
-                        # Histogram of similarity scores
-                        fig = px.histogram(
-                            final_results,
-                            x='Tanimoto_Similarity',
-                            nbins=30,
-                            title='Distribution of Tanimoto Similarity Scores',
-                            labels={'Tanimoto_Similarity': 'Tanimoto Similarity Score'},
-                            color_discrete_sequence=['#4CAF50']
-                        )
-                        fig.update_layout(
-                            showlegend=False,
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            paper_bgcolor='rgba(0,0,0,0)'
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Top 20 matches bar chart
-                        if len(final_results) >= 10:
-                            top_20 = final_results.head(20).copy()
-                            top_20['Label'] = top_20['PDB_ID'] + ' - ' + top_20['Heteroatom_Code']
-                            
-                            fig2 = px.bar(
-                                top_20,
-                                x='Tanimoto_Similarity',
-                                y='Label',
-                                orientation='h',
-                                title='Top 20 Matches by Similarity Score',
-                                labels={'Tanimoto_Similarity': 'Tanimoto Similarity Score', 'Label': 'PDB ID - Ligand'},
-                                color='Tanimoto_Similarity',
-                                color_continuous_scale='Greens'
-                            )
-                            fig2.update_layout(
-                                showlegend=False,
-                                yaxis={'categoryorder': 'total ascending'},
-                                plot_bgcolor='rgba(0,0,0,0)',
-                                paper_bgcolor='rgba(0,0,0,0)'
-                            )
-                            st.plotly_chart(fig2, use_container_width=True)
-                        
-                    except Exception as e:
-                        st.warning(f"Could not generate visualizations: {str(e)}")
             
             else:
                 st.error("No matches found for any of the input SMILES structures")
@@ -1210,6 +1016,204 @@ def show_smiles_database_search():
             st.error(f"Error during search: {str(e)}")
             import traceback
             st.error(traceback.format_exc())
+    
+    # Protein Information Enrichment Section (outside search execution)
+    # This section persists across reruns using session state
+    if 'smiles_search_results' in st.session_state and len(st.session_state['smiles_search_results']) > 0:
+        final_results = st.session_state['smiles_search_results']
+        
+        st.markdown("---")
+        st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        Fetch additional protein information for the PDB structures found in your search results.
+        This will query the RCSB PDB database to retrieve:
+        - **UniProt IDs** associated with each PDB structure
+        - **Protein names/descriptions** for each target
+        """)
+        
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col1:
+            fetch_button = st.button("🔍 Fetch Protein Information", type="primary")
+        
+        with col2:
+            if 'enriched_results' in st.session_state:
+                if st.button("🗑️ Clear Protein Info"):
+                    if 'enriched_results' in st.session_state:
+                        del st.session_state['enriched_results']
+                    st.rerun()
+        
+        # Fetch protein information if button was clicked
+        if fetch_button:
+            with st.spinner("Fetching protein information from RCSB PDB..."):
+                enriched_df = enrich_results_with_protein_info(final_results.copy())
+                st.session_state['enriched_results'] = enriched_df
+        
+        # Display enriched results if available
+        if 'enriched_results' in st.session_state:
+            enriched_df = st.session_state['enriched_results']
+            
+            st.subheader("📋 Enriched Results with Protein Information")
+            
+            # Display enriched table
+            display_enriched = enriched_df.copy()
+            display_enriched['Tanimoto_Similarity'] = display_enriched['Tanimoto_Similarity'].round(4)
+            
+            st.dataframe(
+                display_enriched,
+                use_container_width=True,
+                column_config={
+                    "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="small"),
+                    "PDB_ID": "PDB ID",
+                    "Heteroatom_Code": "Ligand",
+                    "Chemical_Name": "Ligand Name",
+                    "Database_SMILES": st.column_config.TextColumn("SMILES", width="small"),
+                    "Tanimoto_Similarity": st.column_config.NumberColumn(
+                        "Similarity",
+                        format="%.4f"
+                    ),
+                    "Formula": "Formula",
+                    "Status": "Status",
+                    "UniProt_IDs": st.column_config.TextColumn("UniProt IDs", width="medium"),
+                    "Protein_Names": st.column_config.TextColumn("Protein Names", width="large")
+                },
+                hide_index=True
+            )
+            
+            # Summary of protein targets
+            st.markdown("---")
+            st.subheader("📊 Protein Target Summary")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Count unique proteins
+                unique_proteins = enriched_df[enriched_df['UniProt_IDs'] != 'N/A']['UniProt_IDs'].unique()
+                st.metric("Unique Protein Targets", len(unique_proteins))
+                
+                # Show list of UniProt IDs
+                if len(unique_proteins) > 0:
+                    st.markdown("**UniProt IDs Found:**")
+                    all_uniprots = set()
+                    for ids in unique_proteins:
+                        if ids != 'N/A':
+                            all_uniprots.update([uid.strip() for uid in ids.split(',')])
+                    
+                    for uid in sorted(all_uniprots):
+                        st.markdown(f"- [{uid}](https://www.uniprot.org/uniprotkb/{uid})")
+            
+            with col2:
+                # Show protein names
+                unique_names = enriched_df[enriched_df['Protein_Names'] != 'N/A']['Protein_Names'].unique()
+                st.metric("Unique Protein Names", len(unique_names))
+                
+                if len(unique_names) > 0:
+                    st.markdown("**Protein Names:**")
+                    all_names = set()
+                    for names in unique_names:
+                        if names != 'N/A':
+                            all_names.update([n.strip() for n in names.split('|')])
+                    
+                    for name in sorted(all_names)[:10]:  # Show top 10
+                        st.markdown(f"- {name}")
+                    
+                    if len(all_names) > 10:
+                        st.markdown(f"*...and {len(all_names) - 10} more*")
+        
+        # Download section
+        st.markdown("---")
+        st.subheader("📥 Download Results")
+        
+        # Determine which dataframe to use for downloads
+        download_df = st.session_state.get('enriched_results', final_results)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Full results
+            csv_data = download_df.to_csv(index=False)
+            label = "📥 Download Enriched Results (CSV)" if 'enriched_results' in st.session_state else "📥 Download Complete Results (CSV)"
+            st.download_button(
+                label=label,
+                data=csv_data,
+                file_name=f"TrackMyPDB_SMILES_search_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                help="Download all search results with complete information"
+            )
+        
+        with col2:
+            # PDB IDs only
+            if 'enriched_results' in st.session_state:
+                pdb_protein_df = download_df[['PDB_ID', 'UniProt_IDs', 'Protein_Names', 'Tanimoto_Similarity']].drop_duplicates()
+                pdb_protein_csv = pdb_protein_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download PDB-Protein Mapping (CSV)",
+                    data=pdb_protein_csv,
+                    file_name=f"TrackMyPDB_PDB_Protein_Mapping_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download PDB IDs with associated UniProt IDs and protein names"
+                )
+            else:
+                pdb_ids_df = download_df[['PDB_ID', 'Tanimoto_Similarity']].drop_duplicates()
+                pdb_ids_csv = pdb_ids_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download PDB IDs Only (CSV)",
+                    data=pdb_ids_csv,
+                    file_name=f"TrackMyPDB_PDB_IDs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download unique PDB IDs with their best similarity scores"
+                )
+        
+        # Visualizations (if RDKit available)
+        if RDKIT_AVAILABLE and len(final_results) > 0:
+            st.markdown('<div class="section-header">📈 Similarity Distribution</div>', unsafe_allow_html=True)
+            
+            try:
+                import plotly.express as px
+                import plotly.graph_objects as go
+                
+                # Histogram of similarity scores
+                fig = px.histogram(
+                    final_results,
+                    x='Tanimoto_Similarity',
+                    nbins=30,
+                    title='Distribution of Tanimoto Similarity Scores',
+                    labels={'Tanimoto_Similarity': 'Tanimoto Similarity Score'},
+                    color_discrete_sequence=['#4CAF50']
+                )
+                fig.update_layout(
+                    showlegend=False,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Top 20 matches bar chart
+                if len(final_results) >= 10:
+                    top_20 = final_results.head(20).copy()
+                    top_20['Label'] = top_20['PDB_ID'] + ' - ' + top_20['Heteroatom_Code']
+                    
+                    fig2 = px.bar(
+                        top_20,
+                        x='Tanimoto_Similarity',
+                        y='Label',
+                        orientation='h',
+                        title='Top 20 Matches by Similarity Score',
+                        labels={'Tanimoto_Similarity': 'Tanimoto Similarity Score', 'Label': 'PDB ID - Ligand'},
+                        color='Tanimoto_Similarity',
+                        color_continuous_scale='Greens'
+                    )
+                    fig2.update_layout(
+                        showlegend=False,
+                        yaxis={'categoryorder': 'total ascending'},
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)'
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
+                
+            except Exception as e:
+                st.warning(f"Could not generate visualizations: {str(e)}")
 
 def show_complete_pipeline():
     """Display complete pipeline interface"""

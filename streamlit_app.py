@@ -15,6 +15,7 @@ import time
 import os
 import sys
 import base64
+import requests
 from datetime import datetime
 
 # Add backend directory to path
@@ -44,6 +45,132 @@ def get_base64_image(image_path):
     except Exception as e:
         st.error(f"Error loading image {image_path}: {e}")
         return ""
+
+def get_pdb_protein_info(pdb_id):
+    """
+    Fetch protein information (UniProt IDs and protein names) for a given PDB ID
+    
+    Args:
+        pdb_id (str): PDB ID
+        
+    Returns:
+        dict: Dictionary with 'uniprot_ids' (list) and 'protein_names' (list)
+    """
+    try:
+        # Use RCSB PDB Data API to get entry information
+        url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id.upper()}"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code != 200:
+            return {'uniprot_ids': [], 'protein_names': []}
+        
+        data = response.json()
+        
+        # Get polymer entities (proteins)
+        polymer_url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id.upper()}/1"
+        polymer_response = requests.get(polymer_url, timeout=10)
+        
+        uniprot_ids = []
+        protein_names = []
+        
+        if polymer_response.status_code == 200:
+            polymer_data = polymer_response.json()
+            
+            # Extract UniProt IDs
+            if 'rcsb_polymer_entity_container_identifiers' in polymer_data:
+                identifiers = polymer_data['rcsb_polymer_entity_container_identifiers']
+                if 'uniprot_ids' in identifiers:
+                    uniprot_ids = identifiers['uniprot_ids']
+            
+            # Extract protein names/descriptions
+            if 'rcsb_polymer_entity' in polymer_data:
+                entity = polymer_data['rcsb_polymer_entity']
+                if 'pdbx_description' in entity:
+                    protein_names.append(entity['pdbx_description'])
+            
+            if 'entity' in polymer_data:
+                entity_info = polymer_data['entity']
+                if 'pdbx_description' in entity_info:
+                    desc = entity_info['pdbx_description']
+                    if desc and desc not in protein_names:
+                        protein_names.append(desc)
+        
+        # Try to get more entities if available
+        for entity_id in range(1, 5):  # Check up to 4 entities
+            try:
+                entity_url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id.upper()}/{entity_id}"
+                entity_response = requests.get(entity_url, timeout=5)
+                
+                if entity_response.status_code == 200:
+                    entity_data = entity_response.json()
+                    
+                    # Extract UniProt IDs
+                    if 'rcsb_polymer_entity_container_identifiers' in entity_data:
+                        identifiers = entity_data['rcsb_polymer_entity_container_identifiers']
+                        if 'uniprot_ids' in identifiers:
+                            for uid in identifiers['uniprot_ids']:
+                                if uid not in uniprot_ids:
+                                    uniprot_ids.append(uid)
+                    
+                    # Extract protein names
+                    if 'rcsb_polymer_entity' in entity_data:
+                        entity_info = entity_data['rcsb_polymer_entity']
+                        if 'pdbx_description' in entity_info:
+                            desc = entity_info['pdbx_description']
+                            if desc and desc not in protein_names:
+                                protein_names.append(desc)
+            except:
+                break  # Stop if entity doesn't exist
+        
+        return {
+            'uniprot_ids': uniprot_ids if uniprot_ids else [],
+            'protein_names': protein_names if protein_names else []
+        }
+        
+    except Exception as e:
+        return {'uniprot_ids': [], 'protein_names': []}
+
+def enrich_results_with_protein_info(results_df):
+    """
+    Enrich search results with UniProt IDs and protein names
+    
+    Args:
+        results_df (pd.DataFrame): Results dataframe with PDB_ID column
+        
+    Returns:
+        pd.DataFrame: Enriched dataframe with UniProt_IDs and Protein_Names columns
+    """
+    unique_pdbs = results_df['PDB_ID'].unique()
+    
+    # Create a cache for PDB information
+    pdb_info_cache = {}
+    
+    progress_text = st.empty()
+    progress_bar = st.progress(0)
+    
+    for idx, pdb_id in enumerate(unique_pdbs):
+        progress_text.text(f"Fetching protein information for {pdb_id} ({idx + 1}/{len(unique_pdbs)})...")
+        progress_bar.progress((idx + 1) / len(unique_pdbs))
+        
+        info = get_pdb_protein_info(pdb_id)
+        pdb_info_cache[pdb_id] = info
+        
+        # Small delay to avoid rate limiting
+        time.sleep(0.1)
+    
+    progress_text.empty()
+    progress_bar.empty()
+    
+    # Add columns to results
+    results_df['UniProt_IDs'] = results_df['PDB_ID'].apply(
+        lambda x: ', '.join(pdb_info_cache.get(x, {}).get('uniprot_ids', [])) if pdb_info_cache.get(x, {}).get('uniprot_ids', []) else 'N/A'
+    )
+    
+    results_df['Protein_Names'] = results_df['PDB_ID'].apply(
+        lambda x: ' | '.join(pdb_info_cache.get(x, {}).get('protein_names', [])) if pdb_info_cache.get(x, {}).get('protein_names', []) else 'N/A'
+    )
+    
+    return results_df
 
 # Page configuration
 st.set_page_config(
@@ -841,17 +968,124 @@ def show_smiles_database_search():
                     hide_index=True
                 )
                 
+                # Protein Information Enrichment Section
+                st.markdown("---")
+                st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
+                
+                st.markdown("""
+                Fetch additional protein information for the PDB structures found in your search results.
+                This will query the RCSB PDB database to retrieve:
+                - **UniProt IDs** associated with each PDB structure
+                - **Protein names/descriptions** for each target
+                """)
+                
+                col1, col2, col3 = st.columns([1, 1, 2])
+                
+                with col1:
+                    if st.button("🔍 Fetch Protein Information", type="primary"):
+                        st.session_state['fetch_protein_info'] = True
+                
+                with col2:
+                    if 'enriched_results' in st.session_state and st.button("🗑️ Clear Protein Info"):
+                        if 'enriched_results' in st.session_state:
+                            del st.session_state['enriched_results']
+                        st.session_state['fetch_protein_info'] = False
+                        st.rerun()
+                
+                # Fetch protein information if button was clicked
+                if st.session_state.get('fetch_protein_info', False):
+                    with st.spinner("Fetching protein information from RCSB PDB..."):
+                        enriched_df = enrich_results_with_protein_info(final_results.copy())
+                        st.session_state['enriched_results'] = enriched_df
+                    
+                    st.success("✅ Protein information fetched successfully!")
+                
+                # Display enriched results if available
+                if 'enriched_results' in st.session_state:
+                    enriched_df = st.session_state['enriched_results']
+                    
+                    st.subheader("📋 Enriched Results with Protein Information")
+                    
+                    # Display enriched table
+                    display_enriched = enriched_df.copy()
+                    display_enriched['Tanimoto_Similarity'] = display_enriched['Tanimoto_Similarity'].round(4)
+                    
+                    st.dataframe(
+                        display_enriched,
+                        use_container_width=True,
+                        column_config={
+                            "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="small"),
+                            "PDB_ID": "PDB ID",
+                            "Heteroatom_Code": "Ligand",
+                            "Chemical_Name": "Ligand Name",
+                            "Database_SMILES": st.column_config.TextColumn("SMILES", width="small"),
+                            "Tanimoto_Similarity": st.column_config.NumberColumn(
+                                "Similarity",
+                                format="%.4f"
+                            ),
+                            "Formula": "Formula",
+                            "Status": "Status",
+                            "UniProt_IDs": st.column_config.TextColumn("UniProt IDs", width="medium"),
+                            "Protein_Names": st.column_config.TextColumn("Protein Names", width="large")
+                        },
+                        hide_index=True
+                    )
+                    
+                    # Summary of protein targets
+                    st.markdown("---")
+                    st.subheader("📊 Protein Target Summary")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Count unique proteins
+                        unique_proteins = enriched_df[enriched_df['UniProt_IDs'] != 'N/A']['UniProt_IDs'].unique()
+                        st.metric("Unique Protein Targets", len(unique_proteins))
+                        
+                        # Show list of UniProt IDs
+                        if len(unique_proteins) > 0:
+                            st.markdown("**UniProt IDs Found:**")
+                            all_uniprots = set()
+                            for ids in unique_proteins:
+                                if ids != 'N/A':
+                                    all_uniprots.update([uid.strip() for uid in ids.split(',')])
+                            
+                            for uid in sorted(all_uniprots):
+                                st.markdown(f"- [{uid}](https://www.uniprot.org/uniprotkb/{uid})")
+                    
+                    with col2:
+                        # Show protein names
+                        unique_names = enriched_df[enriched_df['Protein_Names'] != 'N/A']['Protein_Names'].unique()
+                        st.metric("Unique Protein Names", len(unique_names))
+                        
+                        if len(unique_names) > 0:
+                            st.markdown("**Protein Names:**")
+                            all_names = set()
+                            for names in unique_names:
+                                if names != 'N/A':
+                                    all_names.update([n.strip() for n in names.split('|')])
+                            
+                            for name in sorted(all_names)[:10]:  # Show top 10
+                                st.markdown(f"- {name}")
+                            
+                            if len(all_names) > 10:
+                                st.markdown(f"*...and {len(all_names) - 10} more*")
+                
                 # Download section
                 st.markdown("---")
                 st.subheader("📥 Download Results")
+                
+                # Determine which dataframe to use for downloads
+                download_df = st.session_state.get('enriched_results', final_results)
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
                     # Full results
-                    csv_data = final_results.to_csv(index=False)
+                    csv_data = download_df.to_csv(index=False)
+                    label = "📥 Download Enriched Results (CSV)" if 'enriched_results' in st.session_state else "📥 Download Complete Results (CSV)"
                     st.download_button(
-                        label="📥 Download Complete Results (CSV)",
+                        label=label,
                         data=csv_data,
                         file_name=f"TrackMyPDB_SMILES_search_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
@@ -860,15 +1094,26 @@ def show_smiles_database_search():
                 
                 with col2:
                     # PDB IDs only
-                    pdb_ids_df = final_results[['PDB_ID', 'Tanimoto_Similarity']].drop_duplicates()
-                    pdb_ids_csv = pdb_ids_df.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download PDB IDs Only (CSV)",
-                        data=pdb_ids_csv,
-                        file_name=f"TrackMyPDB_PDB_IDs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        help="Download unique PDB IDs with their best similarity scores"
-                    )
+                    if 'enriched_results' in st.session_state:
+                        pdb_protein_df = download_df[['PDB_ID', 'UniProt_IDs', 'Protein_Names', 'Tanimoto_Similarity']].drop_duplicates()
+                        pdb_protein_csv = pdb_protein_df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download PDB-Protein Mapping (CSV)",
+                            data=pdb_protein_csv,
+                            file_name=f"TrackMyPDB_PDB_Protein_Mapping_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            help="Download PDB IDs with associated UniProt IDs and protein names"
+                        )
+                    else:
+                        pdb_ids_df = download_df[['PDB_ID', 'Tanimoto_Similarity']].drop_duplicates()
+                        pdb_ids_csv = pdb_ids_df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download PDB IDs Only (CSV)",
+                            data=pdb_ids_csv,
+                            file_name=f"TrackMyPDB_PDB_IDs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            help="Download unique PDB IDs with their best similarity scores"
+                        )
                 
                 # Visualizations (if RDKit available)
                 if RDKIT_AVAILABLE and len(final_results) > 0:

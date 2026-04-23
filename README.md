@@ -226,7 +226,7 @@ Please respect API terms of service and rate limits when using this application.
 
 - Prject Lead/Senior Engineer: [Sul sharif](https://www.linkedin.com/in/sulimansharif/)
 - Lead Engineer: [Anu Gamage](https://www.linkedin.com/in/anu-gamage-62192b201/?originalSubdomain=lk)
-- Associate Engineers: [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/), [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/) & [Logan Geffen](https://www.linkedin.com/in/logan-geffen/)
+- Associate Engineers: [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/), [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/) [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/) & [Logan Geffen](https://www.linkedin.com/in/logan-geffen/)
 
 ## 📞 Support
 

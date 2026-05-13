@@ -1,4 +1,4 @@
-"""
+﻿"""
 TrackMyPDB - Streamlit Application
 @author Anu Gamage
 
@@ -15,6 +15,7 @@ import time
 import os
 import sys
 import base64
+import requests
 from datetime import datetime
 
 # Add backend directory to path
@@ -44,6 +45,169 @@ def get_base64_image(image_path):
     except Exception as e:
         st.error(f"Error loading image {image_path}: {e}")
         return ""
+
+def get_pdb_protein_info(pdb_id):
+    """
+    Fetch protein information (UniProt IDs and protein names) for a given PDB ID
+    using RCSB PDB GraphQL API for more reliable data retrieval
+    
+    Args:
+        pdb_id (str): PDB ID
+        
+    Returns:
+        dict: Dictionary with 'uniprot_ids' (list) and 'protein_names' (list)
+    """
+    try:
+        pdb_id = pdb_id.upper()
+        
+        # Use GraphQL API for more reliable data
+        graphql_url = "https://data.rcsb.org/graphql"
+        
+        query = """
+        query ($pdbId: String!) {
+          entry(entry_id: $pdbId) {
+            polymer_entities {
+              rcsb_polymer_entity_container_identifiers {
+                reference_sequence_identifiers {
+                  database_accession
+                  database_name
+                }
+                uniprot_ids
+              }
+              rcsb_polymer_entity {
+                pdbx_description
+              }
+            }
+          }
+        }
+        """
+        
+        variables = {"pdbId": pdb_id}
+        
+        response = requests.post(
+            graphql_url,
+            json={"query": query, "variables": variables},
+            headers={"Content-Type": "application/json"},
+            timeout=15
+        )
+        
+        if response.status_code != 200:
+            return {'uniprot_ids': [], 'protein_names': []}
+        
+        data = response.json()
+        
+        uniprot_ids = []
+        protein_names = []
+        
+        # Check for errors in response
+        if 'errors' in data:
+            return {'uniprot_ids': [], 'protein_names': [], 'error': str(data['errors'])}
+        
+        # Parse response
+        if 'data' in data and data['data'] and 'entry' in data['data']:
+            entry = data['data']['entry']
+            
+            if entry and 'polymer_entities' in entry:
+                for entity in entry['polymer_entities']:
+                    # Extract UniProt IDs
+                    if 'rcsb_polymer_entity_container_identifiers' in entity:
+                        identifiers = entity['rcsb_polymer_entity_container_identifiers']
+                        
+                        # Direct uniprot_ids field
+                        if 'uniprot_ids' in identifiers and identifiers['uniprot_ids']:
+                            for uid in identifiers['uniprot_ids']:
+                                if uid and uid not in uniprot_ids:
+                                    uniprot_ids.append(uid)
+                        
+                        # From reference_sequence_identifiers
+                        if 'reference_sequence_identifiers' in identifiers:
+                            for ref in identifiers['reference_sequence_identifiers']:
+                                if ref.get('database_name') == 'UniProt':
+                                    acc = ref.get('database_accession')
+                                    if acc and acc not in uniprot_ids:
+                                        uniprot_ids.append(acc)
+                    
+                    # Extract protein descriptions
+                    if 'rcsb_polymer_entity' in entity and entity['rcsb_polymer_entity']:
+                        desc = entity['rcsb_polymer_entity'].get('pdbx_description')
+                        if desc and desc not in protein_names:
+                            protein_names.append(desc)
+        
+        return {
+            'uniprot_ids': uniprot_ids,
+            'protein_names': protein_names
+        }
+        
+    except Exception as e:
+        # Log error for debugging
+        return {'uniprot_ids': [], 'protein_names': [], 'error': str(e)}
+
+def enrich_results_with_protein_info(results_df):
+    """
+    Enrich search results with UniProt IDs and protein names
+    
+    Args:
+        results_df (pd.DataFrame): Results dataframe with PDB_ID column
+        
+    Returns:
+        pd.DataFrame: Enriched dataframe with UniProt_IDs and Protein_Names columns
+    """
+    unique_pdbs = results_df['PDB_ID'].unique()
+    
+    # Create a cache for PDB information
+    pdb_info_cache = {}
+    
+    progress_text = st.empty()
+    progress_bar = st.progress(0)
+    status_container = st.container()
+    
+    success_count = 0
+    error_count = 0
+    
+    for idx, pdb_id in enumerate(unique_pdbs):
+        progress_text.text(f"Fetching protein information for {pdb_id} ({idx + 1}/{len(unique_pdbs)})...")
+        progress_bar.progress((idx + 1) / len(unique_pdbs))
+        
+        try:
+            info = get_pdb_protein_info(pdb_id)
+            pdb_info_cache[pdb_id] = info
+            
+            # Check if data was retrieved
+            if info.get('uniprot_ids') or info.get('protein_names'):
+                success_count += 1
+            elif 'error' in info:
+                error_count += 1
+                with status_container:
+                    st.warning(f"⚠️ Error fetching {pdb_id}: {info.get('error', 'Unknown error')}")
+            
+            # Small delay to avoid rate limiting
+            time.sleep(0.15)
+        except Exception as e:
+            error_count += 1
+            pdb_info_cache[pdb_id] = {'uniprot_ids': [], 'protein_names': []}
+            with status_container:
+                st.warning(f"⚠️ Failed to fetch {pdb_id}: {str(e)}")
+    
+    progress_text.empty()
+    progress_bar.empty()
+    
+    # Show summary
+    with status_container:
+        if success_count > 0:
+            st.success(f"✅ Successfully fetched protein information for {success_count}/{len(unique_pdbs)} PDB structures")
+        if error_count > 0:
+            st.info(f"ℹ️ {error_count} PDB structures had no protein information or encountered errors")
+    
+    # Add columns to results
+    results_df['UniProt_IDs'] = results_df['PDB_ID'].apply(
+        lambda x: ', '.join(pdb_info_cache.get(x, {}).get('uniprot_ids', [])) if pdb_info_cache.get(x, {}).get('uniprot_ids', []) else 'N/A'
+    )
+    
+    results_df['Protein_Names'] = results_df['PDB_ID'].apply(
+        lambda x: ' | '.join(pdb_info_cache.get(x, {}).get('protein_names', [])) if pdb_info_cache.get(x, {}).get('protein_names', []) else 'N/A'
+    )
+    
+    return results_df
 
 # Page configuration
 st.set_page_config(
@@ -166,7 +330,7 @@ def show_sidebar_watermark():
         backdrop-filter: blur(10px);
     ">
         <strong>Developed and released by Standard Seed Corporation</strong><br>
-        <small style="color: #666;">TrackMyPDB V 1.0</small>
+        <small style="color: #666;">TrackMyPDB V 2.0</small>
     </div>
     """, unsafe_allow_html=True)
     
@@ -204,7 +368,7 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.selectbox(
         "Choose Analysis Type",
-        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", "📊 Complete Pipeline"]
+        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", "🔬 SMILES Database Search", "📊 Complete Pipeline"]
     )
     
     # Add watermark at bottom of sidebar
@@ -216,6 +380,8 @@ def main():
         show_extraction_page()
     elif page == "🧪 Similarity Analysis":
         show_similarity_page()
+    elif page == "🔬 SMILES Database Search":
+        show_smiles_database_search()
     elif page == "📊 Complete Pipeline":
         show_complete_pipeline()
     
@@ -263,29 +429,100 @@ def show_home_page():
         - ✅ **Statistical reports**: Comprehensive analysis
         """)
     
-    # Workflow diagram
-    st.markdown('<div class="section-header">🔄 Workflow</div>', unsafe_allow_html=True)
+    # New feature highlight
+    st.markdown('<div class="section-header">🆕 SMILES Database Search</div>', unsafe_allow_html=True)
     
-    st.markdown("""
-    ```
-    UniProt IDs → PDB Structures → Heteroatom Extraction → SMILES Database
-                                                              ↓
-    Target SMILES → Fingerprint Computation → Similarity Analysis → Results CSV
-    ```
-    """)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        #### 🔬 Novel Search Feature
+        - **Purpose**: Search pre-built PDB ligands database
+        - **Input**: SMILES structure only (no UniProt needed)
+        - **Output**: Top matching PDB IDs with similarity scores
+        - **Database**: pdb_ligands_trackmypdb_open_source.csv
+        """)
+    
+    with col2:
+        st.markdown("""
+        #### ⚡ Search Benefits
+        - ✅ **Fast search**: No extraction needed
+        - ✅ **Direct matching**: Query against all PDB ligands
+        - ✅ **Top results**: Best co-crystallized ligands
+        - ✅ **PDB annotations**: Direct PDB ID mapping
+        """)
+    
+    # Workflow diagram
+    st.markdown('<div class="section-header">🔄 Workflows</div>', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        **Standard Pipeline:**
+        ```
+        UniProt IDs 
+           ↓
+        PDB Structures 
+           ↓
+        Heteroatom Extraction 
+           ↓
+        SMILES Database
+           ↓
+        Target SMILES 
+           ↓
+        Similarity Analysis 
+           ↓
+        Results CSV
+        ```
+        """)
+    
+    with col2:
+        st.markdown("""
+        **SMILES Database Search:**
+        ```
+        Input SMILES
+           ↓
+        Morgan Fingerprints
+           ↓
+        PDB Ligands Database
+           ↓
+        Tanimoto Similarity
+           ↓
+        Top PDB IDs
+           ↓
+        Annotated Results
+        ```
+        """)
     
     # Quick start
     st.markdown('<div class="section-header">🚀 Quick Start</div>', unsafe_allow_html=True)
     
-    st.markdown("""
-    1. **Navigate** to "🔍 Heteroatom Extraction"
-    2. **Enter** your UniProt IDs (e.g., Q9UNQ0, P37231, P06276)
-    3. **Run** extraction to build heteroatom database
-    4. **Switch** to "🧪 Similarity Analysis"
-    5. **Input** your target SMILES structure
-    6. **Analyze** molecular similarities
-    7. **Download** results as CSV
-    """)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        **Option 1: Full Pipeline**
+        1. Navigate to "🔍 Heteroatom Extraction"
+        2. Enter your UniProt IDs
+        3. Run extraction to build database
+        4. Switch to "🧪 Similarity Analysis"
+        5. Input your target SMILES
+        6. Analyze molecular similarities
+        7. Download results as CSV
+        """)
+    
+    with col2:
+        st.markdown("""
+        **Option 2: Quick SMILES Search** ⚡
+        1. Navigate to "🔬 SMILES Database Search"
+        2. Enter your SMILES structure(s)
+        3. Set search parameters
+        4. Click "Search Database"
+        5. View top matching PDB IDs
+        6. Download results
+        7. Analyze co-crystallized ligands
+        """)
 
 def show_extraction_page():
     """Display heteroatom extraction interface"""
@@ -546,6 +783,457 @@ def show_similarity_page():
             
         except Exception as e:
             st.error(f"Error during analysis: {str(e)}")
+
+def show_smiles_database_search():
+    """Display SMILES database search interface for finding similar PDB ligands"""
+    
+    st.markdown('<div class="section-header">🔬 SMILES Database Search</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    Search the PDB ligands database using your SMILES structure. This tool will:
+    1. Generate Morgan fingerprints for your input SMILES
+    2. Compare against all co-crystallized ligands in the database
+    3. Return top matching PDB IDs with their similarity scores
+    """)
+    
+    # Check if database exists
+    db_path = "pdb_ligands_trackmypdb_open_source.csv"
+    if not os.path.exists(db_path):
+        st.error(f"❌ Database file '{db_path}' not found. Please ensure the file exists in the application directory.")
+        return
+    
+    # Input section
+    st.subheader("🎯 Input SMILES")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        target_smiles = st.text_area(
+            "Target SMILES Structure",
+            placeholder="Enter SMILES string (e.g., CCO for ethanol)\nYou can enter multiple SMILES, one per line",
+            height=120,
+            help="Enter the SMILES representation of your target molecule(s)"
+        )
+        
+        # SMILES validation
+        if target_smiles:
+            smiles_list = [s.strip() for s in target_smiles.strip().split('\n') if s.strip()]
+            
+            if RDKIT_AVAILABLE:
+                try:
+                    from rdkit import Chem
+                    valid_count = 0
+                    for smiles in smiles_list:
+                        mol = Chem.MolFromSmiles(smiles)
+                        if mol is not None:
+                            valid_count += 1
+                    
+                    if valid_count == len(smiles_list):
+                        st.success(f"✅ All {len(smiles_list)} SMILES structure(s) are valid")
+                    else:
+                        st.warning(f"⚠️ {valid_count}/{len(smiles_list)} SMILES structure(s) are valid")
+                except Exception as e:
+                    st.error(f"❌ Error validating SMILES: {str(e)}")
+            else:
+                st.info(f"Found {len(smiles_list)} SMILES structure(s)")
+    
+    with col2:
+        st.markdown("#### ⚙️ Search Parameters")
+        
+        top_n = st.slider("Number of Top Results", 5, 100, 20, help="Number of top matching PDB IDs to return")
+        min_similarity = st.slider("Minimum Similarity Threshold", 0.0, 1.0, 0.3, 0.05, help="Minimum Tanimoto similarity score (0-1)")
+        
+        st.markdown("#### 📊 Fingerprint Settings")
+        radius = st.selectbox("Morgan Fingerprint Radius", [1, 2, 3], index=1, help="Radius for Morgan fingerprint generation")
+        n_bits = st.selectbox("Fingerprint Bits", [1024, 2048, 4096], index=1, help="Number of bits in fingerprint")
+    
+    # Database info
+    st.subheader("📚 Database Information")
+    
+    try:
+        db_df = pd.read_csv(db_path)
+        
+        # Filter out entries without SMILES
+        db_df_valid = db_df[db_df['SMILES'].notna() & (db_df['SMILES'] != '')]
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Ligands", len(db_df))
+        with col2:
+            st.metric("Valid SMILES", len(db_df_valid))
+        with col3:
+            st.metric("Unique PDB IDs", db_df['PDB_ID'].nunique())
+        with col4:
+            st.metric("Unique Ligands", db_df['Heteroatom_Code'].nunique())
+        
+    except Exception as e:
+        st.error(f"Error loading database: {str(e)}")
+        return
+    
+    # Run search
+    if st.button("🔍 Search Database", type="primary"):
+        if not target_smiles:
+            st.error("Please enter at least one target SMILES structure")
+            return
+        
+        # Clear any existing enriched results from previous searches
+        if 'enriched_results' in st.session_state:
+            del st.session_state['enriched_results']
+        if 'enriched_top_n' in st.session_state:
+            del st.session_state['enriched_top_n']
+        
+        # Parse SMILES input
+        smiles_list = [s.strip() for s in target_smiles.strip().split('\n') if s.strip()]
+        
+        try:
+            # Load database
+            with st.spinner("Loading database..."):
+                db_df = pd.read_csv(db_path)
+                
+                # Filter out entries without SMILES
+                db_df = db_df[db_df['SMILES'].notna() & (db_df['SMILES'] != '')]
+                
+                if len(db_df) == 0:
+                    st.error("No valid SMILES found in database")
+                    return
+                
+                st.info(f"Loaded {len(db_df)} ligands with valid SMILES from database")
+            
+            # Initialize analyzer
+            analyzer = MolecularSimilarityAnalyzer(radius=radius, n_bits=n_bits)
+            
+            # Process each input SMILES
+            all_results = []
+            
+            for idx, query_smiles in enumerate(smiles_list):
+                with st.spinner(f"Analyzing SMILES {idx + 1}/{len(smiles_list)}: {query_smiles[:50]}..."):
+                    
+                    # Generate fingerprint for query SMILES
+                    query_fp = analyzer.smiles_to_fingerprint(query_smiles)
+                    
+                    if query_fp is None:
+                        st.warning(f"⚠️ Invalid SMILES (skipped): {query_smiles}")
+                        continue
+                    
+                    # Calculate similarities
+                    similarities = []
+                    
+                    progress_bar = st.progress(0)
+                    
+                    for i, row in db_df.iterrows():
+                        # Generate fingerprint for database SMILES
+                        db_fp = analyzer.smiles_to_fingerprint(row['SMILES'])
+                        
+                        if db_fp is not None:
+                            # Calculate Tanimoto similarity
+                            similarity = analyzer.calculate_tanimoto_similarity(query_fp, db_fp)
+                            
+                            if similarity >= min_similarity:
+                                similarities.append({
+                                    'Query_SMILES': query_smiles,
+                                    'PDB_ID': row['PDB_ID'],
+                                    'Heteroatom_Code': row['Heteroatom_Code'],
+                                    'Chemical_Name': row['Chemical_Name'],
+                                    'Database_SMILES': row['SMILES'],
+                                    'Tanimoto_Similarity': similarity,
+                                    'Formula': row['Formula'],
+                                    'Status': row.get('Status', '')
+                                })
+                        
+                        # Update progress
+                        if i % 100 == 0:
+                            progress_bar.progress(min((i + 1) / len(db_df), 1.0))
+                    
+                    progress_bar.empty()
+                    
+                    # Sort by similarity and get top N
+                    if similarities:
+                        df_results = pd.DataFrame(similarities)
+                        df_results = df_results.sort_values('Tanimoto_Similarity', ascending=False)
+                        df_results = df_results.head(top_n)
+                        all_results.append(df_results)
+                        
+                        st.success(f"✅ Found {len(similarities)} matches for SMILES {idx + 1} (showing top {min(top_n, len(similarities))})")
+                    else:
+                        st.warning(f"⚠️ No matches found above similarity threshold {min_similarity} for SMILES {idx + 1}")
+            
+            # Combine all results
+            if all_results:
+                final_results = pd.concat(all_results, ignore_index=True)
+                
+                # Sort by similarity score
+                final_results = final_results.sort_values('Tanimoto_Similarity', ascending=False).reset_index(drop=True)
+                
+                # Store ALL results in session state (don't limit here)
+                st.session_state['smiles_search_results'] = final_results
+                
+                st.success(f"🎉 Search completed! Found {len(final_results)} total matches. Scroll down to view results.")
+            
+            else:
+                st.error("No matches found for any of the input SMILES structures")
+                
+        except Exception as e:
+            st.error(f"Error during search: {str(e)}")
+            import traceback
+            st.error(traceback.format_exc())
+    
+    # Protein Information Enrichment Section (outside search execution)
+    # This section persists across reruns using session state
+    if 'smiles_search_results' in st.session_state and len(st.session_state['smiles_search_results']) > 0:
+        # Get stored results and apply current top_n limit dynamically
+        all_stored_results = st.session_state['smiles_search_results']
+        final_results = all_stored_results.head(top_n)
+        
+        # Debug info
+        st.caption(f"🔍 Debug: Slider value = {top_n}, Total stored = {len(all_stored_results)}, Displaying = {len(final_results)}")
+        
+        # Update the displayed results count message
+        if len(all_stored_results) > top_n:
+            st.info(f"ℹ️ Showing top {top_n} results out of {len(all_stored_results)} total matches. Adjust the 'Number of Top Results' slider and the display will update automatically.")
+        
+        # Display results section
+        st.markdown('<div class="section-header">📊 Search Results</div>', unsafe_allow_html=True)
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Showing", len(final_results))
+        with col2:
+            st.metric("Best Similarity", f"{final_results['Tanimoto_Similarity'].max():.4f}")
+        with col3:
+            st.metric("Unique PDB IDs", final_results['PDB_ID'].nunique())
+        with col4:
+            st.metric("Avg Similarity", f"{final_results['Tanimoto_Similarity'].mean():.4f}")
+        
+        # Results table
+        st.subheader("📋 Top Matches")
+        
+        # Display with better formatting
+        display_df = final_results.copy()
+        display_df['Tanimoto_Similarity'] = display_df['Tanimoto_Similarity'].round(4)
+        
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            height=min(400 + (len(display_df) * 35), 800),  # Dynamic height based on number of rows
+            column_config={
+                "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="medium"),
+                "PDB_ID": "PDB ID",
+                "Heteroatom_Code": "Ligand Code",
+                "Chemical_Name": "Chemical Name",
+                "Database_SMILES": st.column_config.TextColumn("Database SMILES", width="medium"),
+                "Tanimoto_Similarity": st.column_config.NumberColumn(
+                    "Similarity Score",
+                    help="Tanimoto similarity score (0-1, higher is better)",
+                    format="%.4f"
+                ),
+                "Formula": "Molecular Formula",
+                "Status": "Status"
+            },
+            hide_index=True
+        )
+        
+        st.markdown("---")
+        st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        Fetch additional protein information for the PDB structures found in your search results.
+        This will query the RCSB PDB database to retrieve:
+        - **UniProt IDs** associated with each PDB structure
+        - **Protein names/descriptions** for each target
+        """)
+        
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col1:
+            fetch_button = st.button("🔍 Fetch Protein Information", type="primary")
+        
+        with col2:
+            if 'enriched_results' in st.session_state:
+                if st.button("🗑️ Clear Protein Info"):
+                    if 'enriched_results' in st.session_state:
+                        del st.session_state['enriched_results']
+                    st.rerun()
+        
+        # Fetch protein information if button was clicked
+        if fetch_button:
+            st.info("🔄 Fetching protein information from RCSB PDB...")
+            enriched_df = enrich_results_with_protein_info(final_results.copy())
+            st.session_state['enriched_results'] = enriched_df
+            st.session_state['enriched_top_n'] = top_n  # Store the top_n value used for enrichment
+        
+        # Display enriched results if available
+        if 'enriched_results' in st.session_state:
+            enriched_df = st.session_state['enriched_results']
+            
+            # Check if top_n has changed since enrichment
+            if st.session_state.get('enriched_top_n', top_n) != top_n:
+                st.warning(f"⚠️ Note: Protein information was fetched for top {st.session_state.get('enriched_top_n', 'N')} results, but you're now viewing top {top_n}. Click 'Fetch Protein Information' again to update.")
+                # Apply current top_n to enriched results
+                enriched_df = enriched_df.head(top_n)
+            
+            st.subheader("📋 Enriched Results with Protein Information")
+            
+            # Display enriched table
+            display_enriched = enriched_df.copy()
+            display_enriched['Tanimoto_Similarity'] = display_enriched['Tanimoto_Similarity'].round(4)
+            
+            st.dataframe(
+                display_enriched,
+                use_container_width=True,
+                height=min(400 + (len(display_enriched) * 35), 800),  # Dynamic height based on number of rows
+                column_config={
+                    "Query_SMILES": st.column_config.TextColumn("Query SMILES", width="small"),
+                    "PDB_ID": "PDB ID",
+                    "Heteroatom_Code": "Ligand",
+                    "Chemical_Name": "Ligand Name",
+                    "Database_SMILES": st.column_config.TextColumn("SMILES", width="small"),
+                    "Tanimoto_Similarity": st.column_config.NumberColumn(
+                        "Similarity",
+                        format="%.4f"
+                    ),
+                    "Formula": "Formula",
+                    "Status": "Status",
+                    "UniProt_IDs": st.column_config.TextColumn("UniProt IDs", width="medium"),
+                    "Protein_Names": st.column_config.TextColumn("Protein Names", width="large")
+                },
+                hide_index=True
+            )
+            
+            # Summary of protein targets
+            st.markdown("---")
+            st.subheader("📊 Protein Target Summary")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Count unique proteins
+                unique_proteins = enriched_df[enriched_df['UniProt_IDs'] != 'N/A']['UniProt_IDs'].unique()
+                st.metric("Unique Protein Targets", len(unique_proteins))
+                
+                # Show list of UniProt IDs
+                if len(unique_proteins) > 0:
+                    st.markdown("**UniProt IDs Found:**")
+                    all_uniprots = set()
+                    for ids in unique_proteins:
+                        if ids != 'N/A':
+                            all_uniprots.update([uid.strip() for uid in ids.split(',')])
+                    
+                    for uid in sorted(all_uniprots):
+                        st.markdown(f"- [{uid}](https://www.uniprot.org/uniprotkb/{uid})")
+            
+            with col2:
+                # Show protein names
+                unique_names = enriched_df[enriched_df['Protein_Names'] != 'N/A']['Protein_Names'].unique()
+                st.metric("Unique Protein Names", len(unique_names))
+                
+                if len(unique_names) > 0:
+                    st.markdown("**Protein Names:**")
+                    all_names = set()
+                    for names in unique_names:
+                        if names != 'N/A':
+                            all_names.update([n.strip() for n in names.split('|')])
+                    
+                    for name in sorted(all_names)[:10]:  # Show top 10
+                        st.markdown(f"- {name}")
+                    
+                    if len(all_names) > 10:
+                        st.markdown(f"*...and {len(all_names) - 10} more*")
+        
+        # Download section
+        st.markdown("---")
+        st.subheader("📥 Download Results")
+        
+        # Determine which dataframe to use for downloads
+        download_df = st.session_state.get('enriched_results', final_results)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Full results
+            csv_data = download_df.to_csv(index=False)
+            label = "📥 Download Enriched Results (CSV)" if 'enriched_results' in st.session_state else "📥 Download Complete Results (CSV)"
+            st.download_button(
+                label=label,
+                data=csv_data,
+                file_name=f"TrackMyPDB_SMILES_search_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                help="Download all search results with complete information"
+            )
+        
+        with col2:
+            # PDB IDs only
+            if 'enriched_results' in st.session_state:
+                pdb_protein_df = download_df[['PDB_ID', 'UniProt_IDs', 'Protein_Names', 'Tanimoto_Similarity']].drop_duplicates()
+                pdb_protein_csv = pdb_protein_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download PDB-Protein Mapping (CSV)",
+                    data=pdb_protein_csv,
+                    file_name=f"TrackMyPDB_PDB_Protein_Mapping_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download PDB IDs with associated UniProt IDs and protein names"
+                )
+            else:
+                pdb_ids_df = download_df[['PDB_ID', 'Tanimoto_Similarity']].drop_duplicates()
+                pdb_ids_csv = pdb_ids_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download PDB IDs Only (CSV)",
+                    data=pdb_ids_csv,
+                    file_name=f"TrackMyPDB_PDB_IDs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download unique PDB IDs with their best similarity scores"
+                )
+        
+        # Visualizations (if RDKit available)
+        if RDKIT_AVAILABLE and len(final_results) > 0:
+            st.markdown('<div class="section-header">📈 Similarity Distribution</div>', unsafe_allow_html=True)
+            
+            try:
+                import plotly.express as px
+                import plotly.graph_objects as go
+                
+                # Histogram of similarity scores
+                fig = px.histogram(
+                    final_results,
+                    x='Tanimoto_Similarity',
+                    nbins=30,
+                    title='Distribution of Tanimoto Similarity Scores',
+                    labels={'Tanimoto_Similarity': 'Tanimoto Similarity Score'},
+                    color_discrete_sequence=['#4CAF50']
+                )
+                fig.update_layout(
+                    showlegend=False,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Top 20 matches bar chart
+                if len(final_results) >= 10:
+                    top_20 = final_results.head(20).copy()
+                    top_20['Label'] = top_20['PDB_ID'] + ' - ' + top_20['Heteroatom_Code']
+                    
+                    fig2 = px.bar(
+                        top_20,
+                        x='Tanimoto_Similarity',
+                        y='Label',
+                        orientation='h',
+                        title='Top 20 Matches by Similarity Score',
+                        labels={'Tanimoto_Similarity': 'Tanimoto Similarity Score', 'Label': 'PDB ID - Ligand'},
+                        color='Tanimoto_Similarity',
+                        color_continuous_scale='Greens'
+                    )
+                    fig2.update_layout(
+                        showlegend=False,
+                        yaxis={'categoryorder': 'total ascending'},
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)'
+                    )
+                    st.plotly_chart(fig2, use_container_width=True)
+                
+            except Exception as e:
+                st.warning(f"Could not generate visualizations: {str(e)}")
 
 def show_complete_pipeline():
     """Display complete pipeline interface"""

@@ -228,8 +228,8 @@ https://trackmypdbsscai.streamlit.app/
 ### BibTeX Format
 ```bibtex
 @software{trackmypdb2025,
-  author = {Sharif, Suliman and Gamage, Anu and Bodun, Damilola and 
-            Kotawalagedara, Kalana and Sha, Sakeer and Hansani, Pamalka and Geffen, Logan},
+  author = {Sharif, Suliman and Gamage, Anu and Kotawalagedara, Kalana and 
+            Sha, Sakeer and Bodun, Damilola},
   title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction 
            and Molecular Similarity Analysis},
   year = {2025},
@@ -270,7 +270,7 @@ If you have obtained a DOI for your work that uses TrackMyPDB, please consider c
 
 - Project Supervisor/Senior Engineer: [Sul sharif](https://www.linkedin.com/in/sulimansharif/)
 - Lead Engineer: [Anu Gamage](https://www.linkedin.com/in/anu-gamage-62192b201/?originalSubdomain=lk)
-- Associate Engineers: [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/), [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/), [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/), [Pamalka Hansani](https://www.linkedin.com/in/phkaldera/) & [Logan Geffen](https://www.linkedin.com/in/logan-geffen/)
+- Associate Engineers: [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/), [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/), [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/)
 
 ## 📞 Support
 

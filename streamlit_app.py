@@ -333,8 +333,8 @@ def show_sidebar_watermark():
         <strong>Developed and released by Standard Seed Corporation</strong><br>
         <small style="color: #666;">TrackMyPDB V 2.0</small><br>
         <small style="color: #666; margin-top: 0.5rem; display: block;">
-            Suliman Sharif, Anu Gamage, Damilola Bodun, Kalana Kotawalagedara,<br>
-            Sakeer Sha, Pamalka Hansani, Logan Geffen
+            Suliman Sharif, Anu Gamage, Kalana Kotawalagedara,<br>
+            Sakeer Sha, Damilola Bodun
         </small>
     </div>
     """, unsafe_allow_html=True)
@@ -449,7 +449,7 @@ def show_home_page():
         <h4 style="color: #856404; margin-top: 0;">👥 Development Team</h4>
         <p style="color: #856404; margin-bottom: 5px;"><strong>Project Supervisor:</strong> Suliman Sharif</p>
         <p style="color: #856404; margin-bottom: 5px;"><strong>Lead Engineer:</strong> Anu Gamage</p>
-        <p style="color: #856404; margin-bottom: 0;"><strong>Associate Engineers:</strong> Damilola Bodun, Kalana Kotawalagedara, Sakeer Sha, Pamalka Hansani, Logan Geffen</p>
+        <p style="color: #856404; margin-bottom: 0;"><strong>Associate Engineers:</strong> Kalana Kotawalagedara, Sakeer Sha, Damilola Bodun</p>
     </div>
     """, unsafe_allow_html=True)
     

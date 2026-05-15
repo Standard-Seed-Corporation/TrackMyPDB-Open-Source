@@ -422,12 +422,12 @@ def show_home_page():
     
     with tab1:
         st.markdown("**Copy the citation below:**")
-        st.code("""Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis (Version 2.0) [Computer software]. Standard Seed Corporation. https://trackmypdbsscai.streamlit.app/""", language="text")
+        st.code("""Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis (Version 2.0) [Computer software]. Standard Seed Corporation. https://trackmypdbsscai.streamlit.app/""", language="text")
         
     with tab2:
         st.markdown("**Copy the BibTeX entry below:**")
         st.code("""@software{trackmypdb2025,
-  author = {Sharif, Suliman and Gamage, Anu and Bodun, Damilola and Kotawalagedara, Kalana and Sha, Sakeer and Hansani, Pamalka and Geffen, Logan},
+  author = {Sharif, Suliman and Gamage, Anu and Kotawalagedara, Kalana and Sha, Sakeer and Bodun, Damilola},
   title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction and Molecular Similarity Analysis},
   year = {2025},
   version = {2.0},
@@ -437,7 +437,7 @@ def show_home_page():
     
     with tab3:
         st.markdown("**Copy the citation below:**")
-        st.code("""Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/""", language="text")
+        st.code("""Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/""", language="text")
     
     st.success("""
     ✅ **Please also acknowledge:** RCSB PDB, PDBe, PubChem, and RDKit Cheminformatics Toolkit in your methods section.

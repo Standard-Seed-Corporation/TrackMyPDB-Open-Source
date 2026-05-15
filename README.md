@@ -218,7 +218,7 @@ If you use TrackMyPDB in your research or project, please cite it as follows:
 
 ### APA Format
 ```
-Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). 
+Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). 
 TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein 
 structures and finding molecularly similar compounds using fingerprint-based similarity analysis 
 (Version 2.0) [Computer software]. Standard Seed Corporation. 
@@ -242,7 +242,7 @@ https://trackmypdbsscai.streamlit.app/
 
 ### Plain Text Format
 ```
-Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). 
+Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). 
 TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. 
 Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/
 ```

@@ -523,6 +523,71 @@ def show_home_page():
         6. Download results
         7. Analyze co-crystallized ligands
         """)
+    
+    # How to Cite section
+    st.markdown('<div class="section-header">📖 How to Cite</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    If you use **TrackMyPDB** in your research or project, please cite it as:
+    """)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown("""
+        **APA Format:**
+        ```
+        Sharif, S., Gamage, A., Bodun, D., 
+        Kotawalagedara, K., Sha, S., Hansani, P., 
+        & Geffen, L. (2025). TrackMyPDB: 
+        A comprehensive bioinformatics pipeline for 
+        extracting heteroatoms from protein structures 
+        and finding molecularly similar compounds using 
+        fingerprint-based similarity analysis 
+        (Version 2.0) [Computer software]. 
+        Standard Seed Corporation.
+        https://trackmypdbsscai.streamlit.app/
+        ```
+        """)
+        
+        st.markdown("""
+        **Plain Text:**
+        ```
+        Sharif, S., Gamage, A., Bodun, D., 
+        Kotawalagedara, K., Sha, S., Hansani, P., 
+        & Geffen, L. (2025). TrackMyPDB v2.0 - 
+        Protein Structure Heteroatom Extraction & 
+        Molecular Similarity Analysis. 
+        Standard Seed Corporation. 
+        Available at: https://trackmypdbsscai.streamlit.app/
+        ```
+        """)
+    
+    with col2:
+        st.markdown("""
+        **BibTeX Format:**
+        ```bibtex
+        @software{trackmypdb2025,
+          author = {Sharif, Suliman and Gamage, Anu and 
+                    Bodun, Damilola and Kotawalagedara, Kalana and 
+                    Sha, Sakeer and Hansani, Pamalka and 
+                    Geffen, Logan},
+          title = {TrackMyPDB: A Comprehensive 
+                   Bioinformatics Pipeline for 
+                   Heteroatom Extraction and 
+                   Molecular Similarity Analysis},
+          year = {2025},
+          version = {2.0},
+          organization = {Standard Seed Corporation},
+          url = {https://trackmypdbsscai.streamlit.app/}
+        }
+        ```
+        """)
+    
+    st.info("""
+    **Note:** Please also acknowledge the underlying databases and tools:
+    RCSB PDB, PDBe, PubChem, and RDKit Cheminformatics Toolkit.
+    """)
 
 def show_extraction_page():
     """Display heteroatom extraction interface"""

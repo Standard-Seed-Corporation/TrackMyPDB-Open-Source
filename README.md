@@ -212,7 +212,51 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Please respect API terms of service and rate limits when using this application.
 
-## 🙏 Acknowledgments
+## � How to Cite
+
+If you use TrackMyPDB in your research or project, please cite it as follows:
+
+### APA Format
+```
+Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). 
+TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein 
+structures and finding molecularly similar compounds using fingerprint-based similarity analysis 
+(Version 2.0) [Computer software]. Standard Seed Corporation. 
+https://trackmypdbsscai.streamlit.app/
+```
+
+### BibTeX Format
+```bibtex
+@software{trackmypdb2025,
+  author = {Sharif, Suliman and Gamage, Anu and Bodun, Damilola and 
+            Kotawalagedara, Kalana and Sha, Sakeer and Hansani, Pamalka and Geffen, Logan},
+  title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction 
+           and Molecular Similarity Analysis},
+  year = {2025},
+  version = {2.0},
+  organization = {Standard Seed Corporation},
+  url = {https://trackmypdbsscai.streamlit.app/},
+  note = {Open-source software for protein structure analysis and molecular similarity}
+}
+```
+
+### Plain Text Format
+```
+Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). 
+TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. 
+Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/
+```
+
+### DOI (if applicable)
+If you have obtained a DOI for your work that uses TrackMyPDB, please consider citing both the software and your own publication.
+
+**Note**: Please also acknowledge the underlying databases and tools used by TrackMyPDB:
+- RCSB Protein Data Bank (RCSB PDB)
+- Protein Data Bank in Europe (PDBe)
+- PubChem Database
+- RDKit Cheminformatics Toolkit
+
+## �🙏 Acknowledgments
 
 - **RCSB PDB**: Protein structure data
 - **PDBe**: Structure mapping services  

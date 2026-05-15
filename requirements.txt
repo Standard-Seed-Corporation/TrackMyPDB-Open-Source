@@ -6,4 +6,5 @@ rdkit>=2023.3.2
 numpy>=1.24.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
-plotly>=5.15.0 
+plotly>=5.15.0
+# Updated: 2026-05-15 - Citation section prominently displayed 

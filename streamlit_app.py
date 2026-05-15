@@ -392,6 +392,13 @@ def main():
 def show_home_page():
     """Display home page with project overview"""
     
+    # Version indicator - VISIBLE CONFIRMATION OF LATEST DEPLOYMENT
+    st.markdown("""
+    <div style="background-color: #d4edda; padding: 10px; border-radius: 5px; border: 2px solid #28a745; margin-bottom: 20px; text-align: center;">
+        <strong>✅ Version 2.0.1 | Updated: May 15, 2026 | Citation Section Active</strong>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Citation section - PROMINENTLY DISPLAYED AT TOP
     st.markdown('<div class="section-header">📖 How to Cite This Work</div>', unsafe_allow_html=True)
     

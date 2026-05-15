@@ -783,6 +783,139 @@ def show_similarity_page():
             
         except Exception as e:
             st.error(f"Error during analysis: {str(e)}")
+    
+    # Protein Information Enrichment Section (outside analysis execution)
+    # This section persists across reruns using session state
+    if 'similarity_results' in st.session_state and not st.session_state['similarity_results'].empty:
+        final_results = st.session_state['similarity_results']
+        
+        # Display results section
+        st.markdown("---")
+        st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        Fetch additional protein information for the PDB structures found in your similarity analysis results.
+        This will query the RCSB PDB database to retrieve:
+        - **UniProt IDs** associated with each PDB structure
+        - **Protein names/descriptions** for each target
+        """)
+        
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col1:
+            fetch_button = st.button("🔍 Fetch Protein Information", type="primary", key="fetch_protein_similarity")
+        
+        with col2:
+            if 'enriched_similarity_results' in st.session_state:
+                if st.button("🗑️ Clear Protein Info", key="clear_protein_similarity"):
+                    if 'enriched_similarity_results' in st.session_state:
+                        del st.session_state['enriched_similarity_results']
+                    st.rerun()
+        
+        # Fetch protein information if button was clicked
+        if fetch_button:
+            st.info("🔄 Fetching protein information from RCSB PDB...")
+            enriched_df = enrich_results_with_protein_info(final_results.copy())
+            st.session_state['enriched_similarity_results'] = enriched_df
+        
+        # Display enriched results if available
+        if 'enriched_similarity_results' in st.session_state:
+            enriched_df = st.session_state['enriched_similarity_results']
+            
+            st.subheader("📋 Enriched Results with Protein Information")
+            
+            # Display enriched table
+            display_enriched = enriched_df.copy()
+            display_enriched['Tanimoto_Similarity'] = display_enriched['Tanimoto_Similarity'].round(4)
+            
+            st.dataframe(
+                display_enriched,
+                use_container_width=True,
+                height=min(400 + (len(display_enriched) * 35), 800),
+                column_config={
+                    "PDB_ID": "PDB ID",
+                    "Heteroatom_Code": "Ligand",
+                    "Chemical_Name": "Ligand Name",
+                    "SMILES": st.column_config.TextColumn("SMILES", width="small"),
+                    "Tanimoto_Similarity": st.column_config.NumberColumn(
+                        "Similarity",
+                        format="%.4f"
+                    ),
+                    "Formula": "Formula",
+                    "UniProt_IDs": st.column_config.TextColumn("UniProt IDs", width="medium"),
+                    "Protein_Names": st.column_config.TextColumn("Protein Names", width="large")
+                },
+                hide_index=True
+            )
+            
+            # Summary of protein targets
+            st.markdown("---")
+            st.subheader("📊 Protein Target Summary")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Count unique proteins
+                unique_proteins = enriched_df[enriched_df['UniProt_IDs'] != 'N/A']['UniProt_IDs'].unique()
+                st.metric("Unique Protein Targets", len(unique_proteins))
+                
+                # Show list of UniProt IDs
+                if len(unique_proteins) > 0:
+                    st.markdown("**UniProt IDs Found:**")
+                    all_uniprots = set()
+                    for ids in unique_proteins:
+                        if ids != 'N/A':
+                            all_uniprots.update([uid.strip() for uid in ids.split(',')])
+                    
+                    for uid in sorted(all_uniprots):
+                        st.markdown(f"- [{uid}](https://www.uniprot.org/uniprotkb/{uid})")
+            
+            with col2:
+                # Show protein names
+                unique_names = enriched_df[enriched_df['Protein_Names'] != 'N/A']['Protein_Names'].unique()
+                st.metric("Unique Protein Names", len(unique_names))
+                
+                if len(unique_names) > 0:
+                    st.markdown("**Protein Names:**")
+                    all_names = set()
+                    for names in unique_names:
+                        if names != 'N/A':
+                            all_names.update([n.strip() for n in names.split('|')])
+                    
+                    for name in sorted(all_names)[:10]:  # Show top 10
+                        st.markdown(f"- {name}")
+                    
+                    if len(all_names) > 10:
+                        st.markdown(f"*...and {len(all_names) - 10} more*")
+            
+            # Enhanced download section with enriched data
+            st.markdown("---")
+            st.subheader("📥 Download Enriched Results")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Full enriched results
+                csv_data = enriched_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Enriched Results (CSV)",
+                    data=csv_data,
+                    file_name=f"TrackMyPDB_similarity_enriched_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download all similarity results with protein information"
+                )
+            
+            with col2:
+                # PDB-Protein mapping
+                pdb_protein_df = enriched_df[['PDB_ID', 'UniProt_IDs', 'Protein_Names', 'Tanimoto_Similarity']].drop_duplicates()
+                pdb_protein_csv = pdb_protein_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download PDB-Protein Mapping (CSV)",
+                    data=pdb_protein_csv,
+                    file_name=f"TrackMyPDB_PDB_Protein_Mapping_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download PDB IDs with associated UniProt IDs and protein names"
+                )
 
 def show_smiles_database_search():
     """Display SMILES database search interface for finding similar PDB ligands"""
@@ -1319,6 +1452,10 @@ def show_complete_pipeline():
             progress_bar.progress(1.0)
             status_text.text("Pipeline completed successfully!")
             
+            # Store results in session state
+            st.session_state['pipeline_heteroatom_data'] = heteroatom_df
+            st.session_state['pipeline_similarity_results'] = similarity_results
+            
             # Save results
             heteroatom_df.to_csv("complete_pipeline_heteroatoms.csv", index=False)
             if not similarity_results.empty:
@@ -1353,6 +1490,139 @@ def show_complete_pipeline():
             st.error(f"Pipeline error: {str(e)}")
             progress_bar.empty()
             status_text.empty()
+    
+    # Protein Information Enrichment Section (outside pipeline execution)
+    # This section persists across reruns using session state
+    if 'pipeline_similarity_results' in st.session_state and not st.session_state['pipeline_similarity_results'].empty:
+        final_results = st.session_state['pipeline_similarity_results']
+        
+        # Display results section
+        st.markdown("---")
+        st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        Fetch additional protein information for the PDB structures found in your pipeline results.
+        This will query the RCSB PDB database to retrieve:
+        - **UniProt IDs** associated with each PDB structure
+        - **Protein names/descriptions** for each target
+        """)
+        
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col1:
+            fetch_button = st.button("🔍 Fetch Protein Information", type="primary", key="fetch_protein_pipeline")
+        
+        with col2:
+            if 'enriched_pipeline_results' in st.session_state:
+                if st.button("🗑️ Clear Protein Info", key="clear_protein_pipeline"):
+                    if 'enriched_pipeline_results' in st.session_state:
+                        del st.session_state['enriched_pipeline_results']
+                    st.rerun()
+        
+        # Fetch protein information if button was clicked
+        if fetch_button:
+            st.info("🔄 Fetching protein information from RCSB PDB...")
+            enriched_df = enrich_results_with_protein_info(final_results.copy())
+            st.session_state['enriched_pipeline_results'] = enriched_df
+        
+        # Display enriched results if available
+        if 'enriched_pipeline_results' in st.session_state:
+            enriched_df = st.session_state['enriched_pipeline_results']
+            
+            st.subheader("📋 Enriched Pipeline Results with Protein Information")
+            
+            # Display enriched table
+            display_enriched = enriched_df.copy()
+            display_enriched['Tanimoto_Similarity'] = display_enriched['Tanimoto_Similarity'].round(4)
+            
+            st.dataframe(
+                display_enriched,
+                use_container_width=True,
+                height=min(400 + (len(display_enriched) * 35), 800),
+                column_config={
+                    "PDB_ID": "PDB ID",
+                    "Heteroatom_Code": "Ligand",
+                    "Chemical_Name": "Ligand Name",
+                    "SMILES": st.column_config.TextColumn("SMILES", width="small"),
+                    "Tanimoto_Similarity": st.column_config.NumberColumn(
+                        "Similarity",
+                        format="%.4f"
+                    ),
+                    "Formula": "Formula",
+                    "UniProt_IDs": st.column_config.TextColumn("UniProt IDs", width="medium"),
+                    "Protein_Names": st.column_config.TextColumn("Protein Names", width="large")
+                },
+                hide_index=True
+            )
+            
+            # Summary of protein targets
+            st.markdown("---")
+            st.subheader("📊 Protein Target Summary")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Count unique proteins
+                unique_proteins = enriched_df[enriched_df['UniProt_IDs'] != 'N/A']['UniProt_IDs'].unique()
+                st.metric("Unique Protein Targets", len(unique_proteins))
+                
+                # Show list of UniProt IDs
+                if len(unique_proteins) > 0:
+                    st.markdown("**UniProt IDs Found:**")
+                    all_uniprots = set()
+                    for ids in unique_proteins:
+                        if ids != 'N/A':
+                            all_uniprots.update([uid.strip() for uid in ids.split(',')])
+                    
+                    for uid in sorted(all_uniprots):
+                        st.markdown(f"- [{uid}](https://www.uniprot.org/uniprotkb/{uid})")
+            
+            with col2:
+                # Show protein names
+                unique_names = enriched_df[enriched_df['Protein_Names'] != 'N/A']['Protein_Names'].unique()
+                st.metric("Unique Protein Names", len(unique_names))
+                
+                if len(unique_names) > 0:
+                    st.markdown("**Protein Names:**")
+                    all_names = set()
+                    for names in unique_names:
+                        if names != 'N/A':
+                            all_names.update([n.strip() for n in names.split('|')])
+                    
+                    for name in sorted(all_names)[:10]:  # Show top 10
+                        st.markdown(f"- {name}")
+                    
+                    if len(all_names) > 10:
+                        st.markdown(f"*...and {len(all_names) - 10} more*")
+            
+            # Enhanced download section with enriched data
+            st.markdown("---")
+            st.subheader("📥 Download Enriched Pipeline Results")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Full enriched results
+                csv_data = enriched_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Enriched Similarity Results (CSV)",
+                    data=csv_data,
+                    file_name=f"TrackMyPDB_pipeline_enriched_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download all pipeline results with protein information"
+                )
+            
+            with col2:
+                # PDB-Protein mapping
+                pdb_protein_df = enriched_df[['PDB_ID', 'UniProt_IDs', 'Protein_Names', 'Tanimoto_Similarity']].drop_duplicates()
+                pdb_protein_csv = pdb_protein_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download PDB-Protein Mapping (CSV)",
+                    data=pdb_protein_csv,
+                    file_name=f"TrackMyPDB_Pipeline_PDB_Protein_Mapping_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download PDB IDs with associated UniProt IDs and protein names"
+                )
 
 if __name__ == "__main__":
     main() 

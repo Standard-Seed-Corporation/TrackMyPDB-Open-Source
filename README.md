@@ -268,7 +268,7 @@ If you have obtained a DOI for your work that uses TrackMyPDB, please consider c
 
 ## 👨‍💻 Developers
 
-- Prject Lead/Senior Engineer: [Sul sharif](https://www.linkedin.com/in/sulimansharif/)
+- Project Supervisor/Senior Engineer: [Sul sharif](https://www.linkedin.com/in/sulimansharif/)
 - Lead Engineer: [Anu Gamage](https://www.linkedin.com/in/anu-gamage-62192b201/?originalSubdomain=lk)
 - Associate Engineers: [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/), [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/), [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/), [Pamalka Hansani](https://www.linkedin.com/in/phkaldera/) & [Logan Geffen](https://www.linkedin.com/in/logan-geffen/)
 

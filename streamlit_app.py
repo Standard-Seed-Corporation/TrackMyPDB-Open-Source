@@ -391,6 +391,59 @@ def main():
 def show_home_page():
     """Display home page with project overview"""
     
+    # Citation section - PROMINENTLY DISPLAYED AT TOP
+    st.markdown('<div class="section-header">📖 How to Cite This Work</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div style="background-color: #f0f8ff; padding: 20px; border-radius: 10px; border-left: 5px solid #4CAF50; margin: 20px 0;">
+        <h4 style="color: #2c3e50; margin-top: 0;">📚 Citation Required</h4>
+        <p style="color: #34495e; font-size: 16px;">
+        If you use <strong>TrackMyPDB</strong> in your research, publications, or projects, 
+        please cite our work using one of the formats below. Proper attribution helps support 
+        continued development and improvements.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Create tabs for different citation formats
+    tab1, tab2, tab3 = st.tabs(["📄 APA Format", "📚 BibTeX Format", "📝 Plain Text"])
+    
+    with tab1:
+        st.markdown("**Copy the citation below:**")
+        st.code("""Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis (Version 2.0) [Computer software]. Standard Seed Corporation. https://trackmypdbsscai.streamlit.app/""", language="text")
+        
+    with tab2:
+        st.markdown("**Copy the BibTeX entry below:**")
+        st.code("""@software{trackmypdb2025,
+  author = {Sharif, Suliman and Gamage, Anu and Bodun, Damilola and Kotawalagedara, Kalana and Sha, Sakeer and Hansani, Pamalka and Geffen, Logan},
+  title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction and Molecular Similarity Analysis},
+  year = {2025},
+  version = {2.0},
+  organization = {Standard Seed Corporation},
+  url = {https://trackmypdbsscai.streamlit.app/}
+}""", language="bibtex")
+    
+    with tab3:
+        st.markdown("**Copy the citation below:**")
+        st.code("""Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/""", language="text")
+    
+    st.success("""
+    ✅ **Please also acknowledge:** RCSB PDB, PDBe, PubChem, and RDKit Cheminformatics Toolkit in your methods section.
+    """)
+    
+    # Developer credits
+    st.markdown("""
+    <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 5px solid #ffc107; margin: 20px 0;">
+        <h4 style="color: #856404; margin-top: 0;">👥 Development Team</h4>
+        <p style="color: #856404; margin-bottom: 5px;"><strong>Project Supervisor:</strong> Suliman Sharif</p>
+        <p style="color: #856404; margin-bottom: 5px;"><strong>Lead Engineer:</strong> Anu Gamage</p>
+        <p style="color: #856404; margin-bottom: 0;"><strong>Associate Engineers:</strong> Damilola Bodun, Kalana Kotawalagedara, Sakeer Sha, Pamalka Hansani, Logan Geffen</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Project Overview section
     st.markdown('<div class="section-header">🎯 Project Overview</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
@@ -523,57 +576,6 @@ def show_home_page():
         6. Download results
         7. Analyze co-crystallized ligands
         """)
-    
-    # Citation section with prominent styling
-    st.markdown("---")
-    st.markdown('<div class="section-header">📖 How to Cite This Work</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div style="background-color: #f0f8ff; padding: 20px; border-radius: 10px; border-left: 5px solid #4CAF50; margin: 20px 0;">
-        <h4 style="color: #2c3e50; margin-top: 0;">📚 Citation Required</h4>
-        <p style="color: #34495e; font-size: 16px;">
-        If you use <strong>TrackMyPDB</strong> in your research, publications, or projects, 
-        please cite our work using one of the formats below. Proper attribution helps support 
-        continued development and improvements.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Create tabs for different citation formats
-    tab1, tab2, tab3 = st.tabs(["📄 APA Format", "📚 BibTeX Format", "📝 Plain Text"])
-    
-    with tab1:
-        st.markdown("**Copy the citation below:**")
-        st.code("""Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis (Version 2.0) [Computer software]. Standard Seed Corporation. https://trackmypdbsscai.streamlit.app/""", language="text")
-        
-    with tab2:
-        st.markdown("**Copy the BibTeX entry below:**")
-        st.code("""@software{trackmypdb2025,
-  author = {Sharif, Suliman and Gamage, Anu and Bodun, Damilola and Kotawalagedara, Kalana and Sha, Sakeer and Hansani, Pamalka and Geffen, Logan},
-  title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction and Molecular Similarity Analysis},
-  year = {2025},
-  version = {2.0},
-  organization = {Standard Seed Corporation},
-  url = {https://trackmypdbsscai.streamlit.app/}
-}""", language="bibtex")
-    
-    with tab3:
-        st.markdown("**Copy the citation below:**")
-        st.code("""Sharif, S., Gamage, A., Bodun, D., Kotawalagedara, K., Sha, S., Hansani, P., & Geffen, L. (2025). TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/""", language="text")
-    
-    st.success("""
-    ✅ **Please also acknowledge:** RCSB PDB, PDBe, PubChem, and RDKit Cheminformatics Toolkit in your methods section.
-    """)
-    
-    # Developer credits
-    st.markdown("""
-    <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 5px solid #ffc107; margin: 20px 0;">
-        <h4 style="color: #856404; margin-top: 0;">👥 Development Team</h4>
-        <p style="color: #856404; margin-bottom: 5px;"><strong>Project Lead:</strong> Suliman Sharif</p>
-        <p style="color: #856404; margin-bottom: 5px;"><strong>Lead Engineer:</strong> Anu Gamage</p>
-        <p style="color: #856404; margin-bottom: 0;"><strong>Associate Engineers:</strong> Damilola Bodun, Kalana Kotawalagedara, Sakeer Sha, Pamalka Hansani, Logan Geffen</p>
-    </div>
-    """, unsafe_allow_html=True)
 
 def show_extraction_page():
     """Display heteroatom extraction interface"""

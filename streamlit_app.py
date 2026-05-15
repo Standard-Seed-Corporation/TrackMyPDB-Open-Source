@@ -331,7 +331,11 @@ def show_sidebar_watermark():
         backdrop-filter: blur(10px);
     ">
         <strong>Developed and released by Standard Seed Corporation</strong><br>
-        <small style="color: #666;">TrackMyPDB V 2.0</small>
+        <small style="color: #666;">TrackMyPDB V 2.0</small><br>
+        <small style="color: #666; margin-top: 0.5rem; display: block;">
+            Suliman Sharif, Anu Gamage, Damilola Bodun, Kalana Kotawalagedara,<br>
+            Sakeer Sha, Pamalka Hansani, Logan Geffen
+        </small>
     </div>
     """, unsafe_allow_html=True)
     

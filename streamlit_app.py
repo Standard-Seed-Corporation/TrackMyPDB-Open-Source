@@ -6,6 +6,7 @@ A comprehensive bioinformatics pipeline for extracting heteroatoms from protein 
 and finding molecularly similar compounds using fingerprint-based similarity analysis.
 
 Licensed under MIT License - Open Source Project
+Version: 2.0 - Updated with prominent citation section
 """
 
 import streamlit as st

@@ -194,6 +194,110 @@ class HeteroatomExtractor:
         except:
             pass
         return ""
+    
+    def fetch_smiles_pdb_ligand_expo(self, code):
+        """
+        Fetch SMILES from PDB Chemical Component Dictionary (Ligand Expo)
+        This is the authoritative source for all PDB ligands including 8D0
+        
+        Args:
+            code (str): 3-letter heteroatom code
+            
+        Returns:
+            dict: Chemical information including SMILES
+        """
+        try:
+            # Try ideal coordinates SDF format first (most reliable)
+            url = f"https://files.wwpdb.org/pub/pdb/data/monomers/{code[0].lower()}/{code}/{code}_ideal.sdf"
+            r = requests.get(url, timeout=15)
+            
+            if r.status_code == 200:
+                # Parse SDF to get SMILES using RDKit
+                try:
+                    from rdkit import Chem
+                    mol = Chem.MolFromMolBlock(r.text)
+                    if mol:
+                        smiles = Chem.MolToSmiles(mol)
+                        formula = Chem.rdMolDescriptors.CalcMolFormula(mol)
+                        return {
+                            'smiles': smiles,
+                            'name': code,  # Will be enriched later
+                            'formula': formula,
+                            'status': 'pdb_ligand_expo_sdf'
+                        }
+                except ImportError:
+                    st.warning("RDKit not available for SDF parsing")
+                except Exception as e:
+                    st.warning(f"Error parsing SDF for {code}: {e}")
+            
+            # Alternative: Try model coordinates
+            url_model = f"https://files.wwpdb.org/pub/pdb/data/monomers/{code[0].lower()}/{code}/{code}_model.sdf"
+            r_model = requests.get(url_model, timeout=15)
+            
+            if r_model.status_code == 200:
+                try:
+                    from rdkit import Chem
+                    mol = Chem.MolFromMolBlock(r_model.text)
+                    if mol:
+                        smiles = Chem.MolToSmiles(mol)
+                        formula = Chem.rdMolDescriptors.CalcMolFormula(mol)
+                        return {
+                            'smiles': smiles,
+                            'name': code,
+                            'formula': formula,
+                            'status': 'pdb_ligand_expo_model'
+                        }
+                except Exception as e:
+                    pass
+        
+        except Exception as e:
+            pass
+        
+        return {'smiles': '', 'name': '', 'formula': '', 'status': 'pdb_ligand_expo_failed'}
+    
+    def fetch_smiles_enhanced(self, code):
+        """
+        Enhanced SMILES fetching with multiple fallbacks:
+        1. RCSB chemcomp API (fastest, most metadata)
+        2. PDB Ligand Expo (authoritative for PDB ligands like 8D0)
+        3. PubChem (broad coverage)
+        
+        Args:
+            code (str): Heteroatom code
+            
+        Returns:
+            dict: Chemical information including SMILES
+        """
+        # Try RCSB first (fastest and has metadata)
+        rcsb_result = self.fetch_smiles_rcsb(code)
+        if rcsb_result['smiles']:
+            return rcsb_result
+        
+        # Try PDB Ligand Expo (authoritative for PDB ligands like 8D0)
+        st.info(f"RCSB failed for {code}, trying PDB Ligand Expo...")
+        pdb_result = self.fetch_smiles_pdb_ligand_expo(code)
+        if pdb_result['smiles']:
+            st.success(f"✅ Found {code} in PDB Ligand Expo!")
+            return pdb_result
+        
+        # Try PubChem as last resort
+        st.info(f"PDB Ligand Expo failed for {code}, trying PubChem...")
+        pubchem_smiles = self.fetch_from_pubchem(code)
+        if pubchem_smiles:
+            return {
+                'smiles': pubchem_smiles,
+                'name': code,
+                'formula': '',
+                'status': 'pubchem_fallback'
+            }
+        
+        # All methods failed
+        return {
+            'smiles': '',
+            'name': '',
+            'formula': '',
+            'status': 'all_sources_failed'
+        }
 
     def process_pdb_heteroatoms(self, pdb_id, uniprot_id, lines):
         """
@@ -234,16 +338,9 @@ class HeteroatomExtractor:
             res_nums = ', '.join(sorted(details.get('residue_numbers', set())))
             atom_count = len(details.get('atom_names', set()))
 
-            # Fetch SMILES from RCSB
-            rcsb_data = self.fetch_smiles_rcsb(code)
+            # Fetch SMILES using enhanced method with multiple fallbacks
+            rcsb_data = self.fetch_smiles_enhanced(code)
             smiles = rcsb_data['smiles']
-
-            # If no SMILES from RCSB, try PubChem
-            if not smiles:
-                pubchem_smiles = self.fetch_from_pubchem(code)
-                if pubchem_smiles:
-                    smiles = pubchem_smiles
-                    rcsb_data['status'] = f"{rcsb_data['status']}_pubchem_found"
 
             results.append({
                 "UniProt_ID": uniprot_id,

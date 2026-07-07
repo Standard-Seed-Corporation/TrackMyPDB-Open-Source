@@ -25,6 +25,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 # Import backend modules
 try:
     from backend.heteroatom_extractor import HeteroatomExtractor
+    from backend.molecule_visualizer import MoleculeVisualizer, ChemicalDrawingTool
+    from backend.disease_annotator import DiseaseAnnotator, DISEASE_CATEGORIES
     # Try to import the full RDKit version first
     try:
         from backend.similarity_analyzer import MolecularSimilarityAnalyzer
@@ -373,7 +375,9 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.selectbox(
         "Choose Analysis Type",
-        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", "🔬 SMILES Database Search", "📊 Complete Pipeline"]
+        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", 
+         "🔬 SMILES Database Search", "📊 Complete Pipeline",
+         "🖼️ Molecule Visualizer", "🏥 Disease Enrichment"]
     )
     
     # Add watermark at bottom of sidebar
@@ -389,6 +393,10 @@ def main():
         show_smiles_database_search()
     elif page == "📊 Complete Pipeline":
         show_complete_pipeline()
+    elif page == "🖼️ Molecule Visualizer":
+        show_molecule_visualizer_page()
+    elif page == "🏥 Disease Enrichment":
+        show_disease_enrichment_page()
     
     # Show footer
     show_footer()
@@ -1689,5 +1697,309 @@ def show_complete_pipeline():
                     help="Download PDB IDs with associated UniProt IDs and protein names"
                 )
 
+def show_molecule_visualizer_page():
+    """Page for molecular visualization and property calculation"""
+    
+    st.markdown('<div class="section-header">🖼️ Molecule Visualizer & Properties</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    **Features:**
+    - 🎨 2D molecular structure visualization
+    - 📊 Physicochemical property calculation
+    - ✍️ Draw structures or input SMILES
+    - 💊 Lipinski's Rule of Five analysis
+    - 🔍 Name-to-SMILES resolution
+    """)
+    
+    if not RDKIT_AVAILABLE:
+        st.error("❌ RDKit is required for molecular visualization. Please install: `pip install rdkit`")
+        return
+    
+    visualizer = MoleculeVisualizer()
+    drawing_tool = ChemicalDrawingTool()
+    
+    # Input section
+    smiles = drawing_tool.simple_smiles_input()
+    
+    if smiles:
+        st.markdown("---")
+        st.subheader("🧬 Molecular Structure")
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.markdown("### 2D Structure")
+            visualizer.display_molecule(smiles, caption=f"SMILES: {smiles}")
+            
+            # SMILES info
+            st.code(smiles, language="text")
+            
+            # Download options
+            img = visualizer.smiles_to_image(smiles, size=(800, 800))
+            if img:
+                buf = BytesIO()
+                img.save(buf, format="PNG")
+                st.download_button(
+                    label="📥 Download Structure (PNG)",
+                    data=buf.getvalue(),
+                    file_name=f"molecule_{smiles[:20]}.png",
+                    mime="image/png"
+                )
+        
+        with col2:
+            st.markdown("### Physicochemical Properties")
+            properties = visualizer.calculate_properties(smiles)
+            
+            if properties:
+                # Display in organized sections
+                st.markdown("#### 📏 Basic Properties")
+                st.metric("Molecular Weight", f"{properties['Molecular_Weight']} Da")
+                st.metric("Formula", properties['Formula'])
+                st.metric("Exact Mass", f"{properties['Exact_Mass']} Da")
+                
+                st.markdown("#### 💊 Lipinski's Rule of Five")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.metric("LogP", properties['LogP'])
+                    st.metric("HB Donors", properties['HBD'])
+                with col_b:
+                    st.metric("HB Acceptors", properties['HBA'])
+                    
+                    # Color-coded violations
+                    violations = properties['Lipinski_Violations']
+                    if violations == 0:
+                        st.metric("Violations", violations, delta="✅ Pass", delta_color="normal")
+                    elif violations == 1:
+                        st.metric("Violations", violations, delta="⚠️ Acceptable", delta_color="off")
+                    else:
+                        st.metric("Violations", violations, delta="❌ Fail", delta_color="inverse")
+                
+                st.markdown("#### 🔗 Topology")
+                col_c, col_d = st.columns(2)
+                with col_c:
+                    st.metric("Rotatable Bonds", properties['Rotatable_Bonds'])
+                    st.metric("Aromatic Rings", properties['Aromatic_Rings'])
+                with col_d:
+                    st.metric("Heavy Atoms", properties['Heavy_Atoms'])
+                    st.metric("Stereocenters", properties['Num_Stereocenters'])
+                
+                st.markdown("#### 📊 Advanced Properties")
+                col_e, col_f = st.columns(2)
+                with col_e:
+                    st.metric("TPSA", f"{properties['TPSA']} Ų")
+                    st.metric("QED Score", properties['QED'])
+                with col_f:
+                    st.metric("Fraction Csp3", properties['Fraction_Csp3'])
+                    st.metric("Molar Refractivity", properties['Molar_Refractivity'])
+                
+                # Interpretation
+                st.markdown("---")
+                st.subheader("💊 Drug-Likeness Assessment")
+                
+                violations = properties['Lipinski_Violations']
+                if violations == 0:
+                    st.success("✅ **Excellent drug-likeness** - Passes all Lipinski criteria")
+                elif violations == 1:
+                    st.warning("⚠️ **Good drug-likeness** - One Lipinski violation (acceptable)")
+                else:
+                    st.error(f"❌ **Poor drug-likeness** - {violations} Lipinski violations")
+                
+                # QED interpretation
+                qed = properties['QED']
+                if qed >= 0.7:
+                    st.success(f"✅ **High QED score ({qed})** - Excellent drug-like qualities")
+                elif qed >= 0.5:
+                    st.info(f"ℹ️ **Moderate QED score ({qed})** - Reasonable drug-like qualities")
+                else:
+                    st.warning(f"⚠️ **Low QED score ({qed})** - Limited drug-like qualities")
+                
+                # Download properties
+                st.markdown("---")
+                props_df = pd.DataFrame([properties])
+                csv = props_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Properties (CSV)",
+                    data=csv,
+                    file_name=f"properties_{smiles[:20]}.csv",
+                    mime="text/csv"
+                )
+
+
+def show_disease_enrichment_page():
+    """Page for disease-based filtering and enrichment"""
+    
+    st.markdown('<div class="section-header">🏥 Disease Enrichment Analysis</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    **Map your protein targets to disease associations** and filter results by disease categories.
+    
+    **Data Sources:**
+    - UniProt disease annotations
+    - Gene-disease associations
+    - Clinical relevance filtering
+    """)
+    
+    annotator = DiseaseAnnotator()
+    
+    # Check if we have results to enrich
+    results_source = st.selectbox(
+        "Select Results Source",
+        ["Similarity Analysis Results", "SMILES Database Search", "Complete Pipeline", "Manual UniProt Input"]
+    )
+    
+    results_df = None
+    
+    if results_source == "Similarity Analysis Results" and 'enriched_similarity_results' in st.session_state:
+        results_df = st.session_state['enriched_similarity_results']
+        st.success(f"✅ Loaded {len(results_df)} similarity analysis results")
+    elif results_source == "SMILES Database Search" and 'enriched_results' in st.session_state:
+        results_df = st.session_state['enriched_results']
+        st.success(f"✅ Loaded {len(results_df)} SMILES search results")
+    elif results_source == "Complete Pipeline" and 'enriched_pipeline_results' in st.session_state:
+        results_df = st.session_state['enriched_pipeline_results']
+        st.success(f"✅ Loaded {len(results_df)} complete pipeline results")
+    elif results_source == "Manual UniProt Input":
+        uniprot_input = st.text_area(
+            "Enter UniProt IDs (one per line)",
+            placeholder="P04637\nQ9UNQ0\nP37231",
+            height=100
+        )
+        
+        if uniprot_input and st.button("🔍 Fetch Disease Annotations"):
+            uniprot_ids = [uid.strip() for uid in uniprot_input.split('\n') if uid.strip()]
+            
+            # Create a simple DataFrame
+            results_df = pd.DataFrame({
+                'UniProt_IDs': uniprot_ids,
+                'PDB_ID': ['N/A'] * len(uniprot_ids)
+            })
+            st.success(f"✅ Created dataset with {len(results_df)} UniProt IDs")
+    
+    if results_df is not None and len(results_df) > 0:
+        
+        # Disease filter options
+        st.markdown("---")
+        st.subheader("🔍 Disease Filter Options")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            disease_category = st.multiselect(
+                "Select Disease Categories",
+                list(DISEASE_CATEGORIES.keys()),
+                help="Pre-defined disease categories"
+            )
+        
+        with col2:
+            custom_keywords = st.text_input(
+                "Custom Disease Keywords (comma-separated)",
+                placeholder="leukemia, breast cancer, COVID-19",
+                help="Add your own disease keywords"
+            )
+        
+        # Run enrichment
+        if st.button("🚀 Run Disease Enrichment", type="primary"):
+            with st.spinner("Fetching disease annotations..."):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                def update_progress(progress, message):
+                    progress_bar.progress(progress)
+                    status_text.text(message)
+                
+                enriched_df = annotator.enrich_results_with_diseases(
+                    results_df.copy(),
+                    progress_callback=update_progress
+                )
+                
+                progress_bar.empty()
+                status_text.empty()
+                
+                st.session_state['disease_enriched_results'] = enriched_df
+                st.success("✅ Disease enrichment completed!")
+        
+        # Display enriched results
+        if 'disease_enriched_results' in st.session_state:
+            enriched_df = st.session_state['disease_enriched_results']
+            
+            st.markdown("---")
+            st.subheader("📊 Disease-Enriched Results")
+            
+            # Apply filters if selected
+            filtered_df = enriched_df.copy()
+            
+            if disease_category or custom_keywords:
+                keywords = []
+                
+                # Add category keywords
+                for cat in disease_category:
+                    keywords.extend(DISEASE_CATEGORIES[cat])
+                
+                # Add custom keywords
+                if custom_keywords:
+                    keywords.extend([k.strip() for k in custom_keywords.split(',')])
+                
+                # Filter
+                mask = filtered_df['Disease_Associations'].apply(
+                    lambda x: any(kw.lower() in str(x).lower() for kw in keywords) if x != 'N/A' else False
+                )
+                filtered_df = filtered_df[mask]
+                
+                st.info(f"🔍 Filtered to {len(filtered_df)} results matching disease criteria")
+            
+            # Display results
+            st.dataframe(filtered_df, use_container_width=True, height=400)
+            
+            # Disease summary
+            st.markdown("---")
+            st.subheader("📈 Disease Summary")
+            
+            # Count disease mentions
+            all_diseases = []
+            for disease_str in filtered_df['Disease_Associations']:
+                if disease_str and disease_str != 'N/A' and disease_str != 'No disease associations':
+                    all_diseases.extend([d.strip() for d in str(disease_str).split('|')])
+            
+            if all_diseases:
+                disease_counts = pd.Series(all_diseases).value_counts().head(20)
+                
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    import plotly.express as px
+                    fig = px.bar(
+                        x=disease_counts.values,
+                        y=disease_counts.index,
+                        orientation='h',
+                        title='Top 20 Disease Associations',
+                        labels={'x': 'Count', 'y': 'Disease'},
+                        color=disease_counts.values,
+                        color_continuous_scale='Reds'
+                    )
+                    fig.update_layout(height=600)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    st.markdown("#### 📊 Statistics")
+                    st.metric("Total Diseases", len(all_diseases))
+                    st.metric("Unique Diseases", len(set(all_diseases)))
+                    st.metric("Most Common", disease_counts.index[0] if len(disease_counts) > 0 else "N/A")
+                    st.metric("Frequency", disease_counts.values[0] if len(disease_counts) > 0 else 0)
+            else:
+                st.info("No disease associations found in filtered results")
+            
+            # Download
+            st.markdown("---")
+            csv_data = filtered_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download Disease-Enriched Results (CSV)",
+                data=csv_data,
+                file_name=f"disease_enriched_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+    
+    else:
+        st.info("ℹ️ No results available. Please run an analysis first or enter UniProt IDs manually.")
+
 if __name__ == "__main__":
-    main() 
+    main()

@@ -6,6 +6,10 @@ Based on the proven Colab notebook algorithm for accurate molecular similarity a
 Licensed under MIT License - Open Source Project
 """
 
+# Force matplotlib to use non-GUI backend (fixes libXrender.so.1 error on Linux/WSL)
+import matplotlib
+matplotlib.use('Agg')
+
 import pandas as pd
 import numpy as np
 from rdkit import Chem

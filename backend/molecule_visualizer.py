@@ -6,6 +6,10 @@ Handles 2D molecular visualization and physicochemical property calculations
 Licensed under MIT License - Open Source Project
 """
 
+# Force matplotlib to use non-GUI backend (fixes libXrender.so.1 error on Linux/WSL)
+import matplotlib
+matplotlib.use('Agg')
+
 import streamlit as st
 from rdkit import Chem
 from rdkit.Chem import Draw, Descriptors, Crippen, Lipinski, AllChem, rdMolDescriptors

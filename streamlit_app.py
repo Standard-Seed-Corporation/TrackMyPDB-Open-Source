@@ -9,6 +9,14 @@ Licensed under MIT License - Open Source Project
 Version: 2.0 - Updated with author names and citation section
 """
 
+# ============================================================================
+# CRITICAL FIX: Force matplotlib to use non-GUI backend BEFORE any imports
+# This fixes libXrender.so.1 error on Linux/Streamlit Cloud/Docker
+# MUST be at the very top before importing any modules that use matplotlib
+# ============================================================================
+import matplotlib
+matplotlib.use('Agg')
+
 import streamlit as st
 import pandas as pd
 import numpy as np

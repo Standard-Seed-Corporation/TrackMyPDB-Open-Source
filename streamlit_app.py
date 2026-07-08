@@ -26,6 +26,7 @@ import sys
 import base64
 import requests
 from datetime import datetime
+from io import BytesIO
 
 # Add backend directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))

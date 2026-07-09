@@ -134,6 +134,25 @@ class MCPServer:
                 }
             },
             {
+                "name": "extract_heteroatoms_from_pdb",
+                "description": "Extract the actual heteroatoms (ligands, cofactors, ions) from a SINGLE PDB structure by its PDB ID. Returns the heteroatom codes found and, optionally, their SMILES. Use this when a user wants real heteroatom details from a specific structure like 5NJ3.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "pdb_id": {
+                            "type": "string",
+                            "description": "PDB structure identifier (e.g., 5NJ3)"
+                        },
+                        "include_smiles": {
+                            "type": "boolean",
+                            "description": "Whether to fetch SMILES for each heteroatom (slower). Default false.",
+                            "default": False
+                        }
+                    },
+                    "required": ["pdb_id"]
+                }
+            },
+            {
                 "name": "validate_smiles",
                 "description": "Validate if a SMILES string is valid and return molecular properties",
                 "inputSchema": {
@@ -194,6 +213,12 @@ class MCPServer:
         
         elif tool_name == "get_protein_info":
             return await self._get_protein_info(tool_input["uniprot_id"])
+        
+        elif tool_name == "extract_heteroatoms_from_pdb":
+            return await self._extract_heteroatoms_from_pdb(
+                tool_input["pdb_id"],
+                tool_input.get("include_smiles", False)
+            )
         
         elif tool_name == "validate_smiles":
             return await self._validate_smiles(tool_input["smiles"])
@@ -337,6 +362,52 @@ class MCPServer:
         except Exception as e:
             return {"error": str(e), "status": "failed",
                     "message": f"Could not retrieve info for {uniprot_id} from UniProt"}
+    
+    async def _extract_heteroatoms_from_pdb(self, pdb_id: str, include_smiles: bool = False) -> dict:
+        """Extract actual heteroatoms from a single PDB structure"""
+        try:
+            if not self.extractor:
+                return {"error": "HeteroatomExtractor not available"}
+            
+            pdb_id = pdb_id.strip().upper()
+            
+            # Download the PDB file
+            lines = self.extractor.download_pdb(pdb_id)
+            if not lines:
+                return {"status": "failed", "pdb_id": pdb_id,
+                        "message": f"Could not download PDB file for {pdb_id}"}
+            
+            # Extract heteroatom codes
+            het_codes, het_details = self.extractor.extract_all_heteroatoms(lines)
+            
+            # Filter out common non-interesting heteroatoms (water)
+            interesting = [c for c in het_codes if c != "HOH"]
+            
+            result = {
+                "status": "success",
+                "pdb_id": pdb_id,
+                "total_heteroatoms": len(het_codes),
+                "heteroatom_codes": het_codes,
+                "ligands_and_cofactors": interesting,
+                "note": "HOH = water molecules"
+            }
+            
+            # Optionally fetch SMILES for each interesting heteroatom
+            if include_smiles:
+                smiles_map = {}
+                for code in interesting[:15]:  # cap to avoid long waits
+                    try:
+                        smiles = self.extractor.fetch_smiles_enhanced(code)
+                        if smiles:
+                            smiles_map[code] = smiles
+                    except Exception:
+                        pass
+                result["smiles"] = smiles_map
+            
+            return result
+        
+        except Exception as e:
+            return {"error": str(e), "status": "failed"}
     
     async def _validate_smiles(self, smiles: str) -> dict:
         """Validate SMILES string"""

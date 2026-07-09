@@ -266,21 +266,37 @@ class MCPServer:
         """Analyze molecular similarity"""
         try:
             if not self.analyzer:
-                return {"error": "MolecularSimilarityAnalyzer not available"}
+                return {"error": "MolecularSimilarityAnalyzer not available (rdkit may not be installed)"}
             
-            results = self.analyzer.compute_similarity(
-                target_smiles=target_smiles,
-                smiles_list=molecule_list,
-                morgan_radius=morgan_radius,
-                fingerprint_bits=fingerprint_bits,
-                min_similarity=min_similarity,
-                top_n=top_n
-            )
+            # Configure analyzer parameters
+            self.analyzer.radius = morgan_radius
+            self.analyzer.n_bits = fingerprint_bits
+            
+            # Compute fingerprint for the target molecule
+            target_fp = self.analyzer.smiles_to_fingerprint(target_smiles)
+            if target_fp is None:
+                return {"status": "failed",
+                        "message": f"Invalid target SMILES: {target_smiles}"}
+            
+            # Compare each molecule in the list
+            scored = []
+            for smi in molecule_list:
+                fp = self.analyzer.smiles_to_fingerprint(smi)
+                if fp is None:
+                    continue
+                sim = self.analyzer.calculate_tanimoto_similarity(target_fp, fp)
+                if sim >= min_similarity:
+                    scored.append({"smiles": smi, "similarity": round(float(sim), 4)})
+            
+            # Sort by similarity descending and take top N
+            scored.sort(key=lambda x: x["similarity"], reverse=True)
+            results = scored[:top_n]
             
             return {
                 "status": "success",
                 "target_smiles": target_smiles,
                 "total_compared": len(molecule_list),
+                "matches_found": len(results),
                 "results": results,
                 "parameters": {
                     "morgan_radius": morgan_radius,
@@ -410,12 +426,14 @@ class MCPServer:
             return {"error": str(e), "status": "failed"}
     
     async def _validate_smiles(self, smiles: str) -> dict:
-        """Validate SMILES string"""
+        """Validate SMILES string using RDKit"""
         try:
             if not self.analyzer:
-                return {"error": "MolecularSimilarityAnalyzer not available"}
+                return {"error": "MolecularSimilarityAnalyzer not available (rdkit may not be installed)"}
             
-            is_valid = self.analyzer.validate_smiles(smiles)
+            # A SMILES is valid if RDKit can build a fingerprint from it
+            fp = self.analyzer.smiles_to_fingerprint(smiles)
+            is_valid = fp is not None
             
             return {
                 "smiles": smiles,

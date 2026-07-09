@@ -102,8 +102,9 @@ For complex requests:
         # Add user message to history
         self.conversation_history.append(Message(role="user", content=user_message))
         
-        # Prepare conversation for API
-        messages = [
+        # Prepare conversation for API (start with system prompt)
+        messages = [{"role": "system", "content": self._create_system_prompt()}]
+        messages += [
             {"role": msg.role, "content": msg.content}
             for msg in self.conversation_history
         ]
@@ -116,66 +117,54 @@ For complex requests:
             tool_choice="auto"
         )
         
-        # Process response and handle tool calls
-        assistant_message = ""
-        tool_calls = []
+        response_message = response.choices[0].message
         
-        # Extract content
-        for choice in response.choices:
-            if choice.message.content:
-                assistant_message += choice.message.content
+        # Check if the model wants to call tools
+        if response_message.tool_calls:
+            # Append the assistant's tool-call message exactly as returned.
+            # content may be None; OpenAI accepts None here as long as tool_calls is present.
+            messages.append({
+                "role": "assistant",
+                "content": response_message.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments
+                        }
+                    }
+                    for tc in response_message.tool_calls
+                ]
+            })
             
-            # Check for tool calls
-            if choice.message.tool_calls:
-                for tool_call in choice.message.tool_calls:
-                    tool_calls.append({
-                        "id": tool_call.id,
-                        "name": tool_call.function.name,
-                        "input": json.loads(tool_call.function.arguments)
-                    })
-        
-        # Process tool calls if any
-        if tool_calls:
-            # Add assistant message with tool calls
-            self.conversation_history.append(
-                Message(role="assistant", content=assistant_message)
-            )
-            
-            # Execute tools and get results
-            tool_results = []
-            for tool_call in tool_calls:
+            # Execute each tool and append a matching 'tool' role message
+            for tc in response_message.tool_calls:
                 try:
                     tool_result = self._execute_tool(
-                        tool_call["name"],
-                        tool_call["input"]
+                        tc.function.name,
+                        json.loads(tc.function.arguments)
                     )
-                    tool_results.append({
-                        "tool_use_id": tool_call["id"],
-                        "content": json.dumps(tool_result)
-                    })
+                    result_content = json.dumps(tool_result)
                 except Exception as e:
-                    tool_results.append({
-                        "tool_use_id": tool_call["id"],
-                        "content": json.dumps({"error": str(e)})
-                    })
+                    result_content = json.dumps({"error": str(e)})
+                
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": result_content
+                })
             
-            # Prepare tool results for follow-up
-            messages.append({"role": "assistant", "content": response.choices[0].message.content})
-            
-            # Add tool results as user message
-            tool_result_content = "Tool results:\n"
-            for result in tool_results:
-                tool_result_content += f"\n{result['content']}"
-            
-            messages.append({"role": "user", "content": tool_result_content})
-            
-            # Get final response after tool calls
+            # Get final response after tools have run
             final_response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages
             )
             
-            assistant_message = final_response.choices[0].message.content
+            assistant_message = final_response.choices[0].message.content or ""
+        else:
+            assistant_message = response_message.content or ""
         
         # Add assistant response to history
         self.conversation_history.append(

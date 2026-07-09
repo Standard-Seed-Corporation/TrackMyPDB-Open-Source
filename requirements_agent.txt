@@ -1,0 +1,32 @@
+# TrackMyPDB Agentic Layer Requirements
+# Install with: pip install -r requirements_agent.txt
+
+# Core TrackMyPDB dependencies
+streamlit>=1.28.0
+requests>=2.31.0
+pandas>=2.0.0
+tqdm>=4.65.0
+rdkit>=2023.3.2
+numpy>=1.24.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
+Pillow>=10.0.0
+
+# Agent & API dependencies
+anthropic>=0.25.0          # Claude API SDK
+python-dotenv>=1.0.0       # Environment variable management
+pydantic>=2.0.0            # Data validation
+aiofiles>=23.1.0           # Async file operations
+
+# Optional dependencies for enhanced functionality
+# httpx>=0.24.0            # Async HTTP client
+# sqlalchemy>=2.0.0        # Database support (for caching)
+# redis>=5.0.0             # Redis client (for session caching)
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.0.0

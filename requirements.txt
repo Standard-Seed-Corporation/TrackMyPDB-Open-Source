@@ -10,3 +10,8 @@ plotly>=5.15.0
 Pillow>=10.0.0
 # Updated: 2026-05-15 - Citation section prominently displayed
 # Updated: 2026-07-07 - Added Pillow, fixed libXrender.so.1 error with matplotlib Agg backend 
+# Agent layer requirements
+anthropic>=0.25.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+aiofiles>=23.1.0

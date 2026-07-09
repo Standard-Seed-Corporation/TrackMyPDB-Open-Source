@@ -18,3 +18,4 @@ aiofiles>=23.1.0
 
 # OpenAI dependencies (for sakeer2 branch)
 openai>=1.0.0
+openai>=1.0.0

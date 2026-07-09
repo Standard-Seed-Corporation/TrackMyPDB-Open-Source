@@ -11,8 +11,18 @@ from typing import Any
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-# Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'TrackMyPDB-Open-Source-sakeer'))
+# Add backend to path — try multiple locations so this works whether the
+# MCP server sits in the repo root or inside the agent/ subfolder.
+_here = os.path.dirname(os.path.abspath(__file__))
+_candidate_paths = [
+    _here,                                # same folder as this file
+    os.path.dirname(_here),               # parent (repo root, if file is in agent/)
+    os.path.join(_here, 'TrackMyPDB-Open-Source-sakeer'),  # local dev layout
+]
+for _p in _candidate_paths:
+    if os.path.isdir(os.path.join(_p, 'backend')):
+        sys.path.insert(0, _p)
+        break
 
 try:
     from backend.heteroatom_extractor import HeteroatomExtractor
@@ -110,6 +120,39 @@ class MCPServer:
                 }
             },
             {
+                "name": "get_protein_info",
+                "description": "Get authoritative protein information (name, gene, organism, function) from the UniProt database for a given UniProt ID. ALWAYS use this before describing what a protein is — do not rely on prior knowledge, as protein IDs are easy to confuse.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "uniprot_id": {
+                            "type": "string",
+                            "description": "UniProt protein identifier (e.g., P37231, Q9UNQ0)"
+                        }
+                    },
+                    "required": ["uniprot_id"]
+                }
+            },
+            {
+                "name": "extract_heteroatoms_from_pdb",
+                "description": "Extract the actual heteroatoms (ligands, cofactors, ions) from a SINGLE PDB structure by its PDB ID. Returns the heteroatom codes found and, optionally, their SMILES. Use this when a user wants real heteroatom details from a specific structure like 5NJ3.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "pdb_id": {
+                            "type": "string",
+                            "description": "PDB structure identifier (e.g., 5NJ3)"
+                        },
+                        "include_smiles": {
+                            "type": "boolean",
+                            "description": "Whether to fetch SMILES for each heteroatom (slower). Default false.",
+                            "default": False
+                        }
+                    },
+                    "required": ["pdb_id"]
+                }
+            },
+            {
                 "name": "validate_smiles",
                 "description": "Validate if a SMILES string is valid and return molecular properties",
                 "inputSchema": {
@@ -168,6 +211,15 @@ class MCPServer:
         elif tool_name == "get_pdb_structures":
             return await self._get_pdb_structures(tool_input["uniprot_id"])
         
+        elif tool_name == "get_protein_info":
+            return await self._get_protein_info(tool_input["uniprot_id"])
+        
+        elif tool_name == "extract_heteroatoms_from_pdb":
+            return await self._extract_heteroatoms_from_pdb(
+                tool_input["pdb_id"],
+                tool_input.get("include_smiles", False)
+            )
+        
         elif tool_name == "validate_smiles":
             return await self._validate_smiles(tool_input["smiles"])
         
@@ -214,21 +266,37 @@ class MCPServer:
         """Analyze molecular similarity"""
         try:
             if not self.analyzer:
-                return {"error": "MolecularSimilarityAnalyzer not available"}
+                return {"error": "MolecularSimilarityAnalyzer not available (rdkit may not be installed)"}
             
-            results = self.analyzer.compute_similarity(
-                target_smiles=target_smiles,
-                smiles_list=molecule_list,
-                morgan_radius=morgan_radius,
-                fingerprint_bits=fingerprint_bits,
-                min_similarity=min_similarity,
-                top_n=top_n
-            )
+            # Configure analyzer parameters
+            self.analyzer.radius = morgan_radius
+            self.analyzer.n_bits = fingerprint_bits
+            
+            # Compute fingerprint for the target molecule
+            target_fp = self.analyzer.smiles_to_fingerprint(target_smiles)
+            if target_fp is None:
+                return {"status": "failed",
+                        "message": f"Invalid target SMILES: {target_smiles}"}
+            
+            # Compare each molecule in the list
+            scored = []
+            for smi in molecule_list:
+                fp = self.analyzer.smiles_to_fingerprint(smi)
+                if fp is None:
+                    continue
+                sim = self.analyzer.calculate_tanimoto_similarity(target_fp, fp)
+                if sim >= min_similarity:
+                    scored.append({"smiles": smi, "similarity": round(float(sim), 4)})
+            
+            # Sort by similarity descending and take top N
+            scored.sort(key=lambda x: x["similarity"], reverse=True)
+            results = scored[:top_n]
             
             return {
                 "status": "success",
                 "target_smiles": target_smiles,
                 "total_compared": len(molecule_list),
+                "matches_found": len(results),
                 "results": results,
                 "parameters": {
                     "morgan_radius": morgan_radius,
@@ -259,13 +327,113 @@ class MCPServer:
         except Exception as e:
             return {"error": str(e), "status": "failed"}
     
+    async def _get_protein_info(self, uniprot_id: str) -> dict:
+        """Fetch authoritative protein information from the UniProt REST API"""
+        try:
+            import requests
+            
+            uniprot_id = uniprot_id.strip().upper()
+            url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.json"
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            # Protein (recommended) name
+            protein_name = None
+            desc = data.get("proteinDescription", {})
+            rec = desc.get("recommendedName", {})
+            if rec.get("fullName", {}).get("value"):
+                protein_name = rec["fullName"]["value"]
+            elif desc.get("submissionNames"):
+                protein_name = desc["submissionNames"][0].get("fullName", {}).get("value")
+            
+            # Gene name
+            gene_name = None
+            genes = data.get("genes", [])
+            if genes and genes[0].get("geneName", {}).get("value"):
+                gene_name = genes[0]["geneName"]["value"]
+            
+            # Organism
+            organism = data.get("organism", {}).get("scientificName")
+            
+            # Function (first function comment)
+            function_text = None
+            for comment in data.get("comments", []):
+                if comment.get("commentType") == "FUNCTION":
+                    texts = comment.get("texts", [])
+                    if texts:
+                        function_text = texts[0].get("value")
+                        break
+            
+            return {
+                "status": "success",
+                "uniprot_id": uniprot_id,
+                "protein_name": protein_name or "Unknown",
+                "gene_name": gene_name or "Unknown",
+                "organism": organism or "Unknown",
+                "function": function_text or "No function description available",
+                "source": "UniProt REST API"
+            }
+        
+        except Exception as e:
+            return {"error": str(e), "status": "failed",
+                    "message": f"Could not retrieve info for {uniprot_id} from UniProt"}
+    
+    async def _extract_heteroatoms_from_pdb(self, pdb_id: str, include_smiles: bool = False) -> dict:
+        """Extract actual heteroatoms from a single PDB structure"""
+        try:
+            if not self.extractor:
+                return {"error": "HeteroatomExtractor not available"}
+            
+            pdb_id = pdb_id.strip().upper()
+            
+            # Download the PDB file
+            lines = self.extractor.download_pdb(pdb_id)
+            if not lines:
+                return {"status": "failed", "pdb_id": pdb_id,
+                        "message": f"Could not download PDB file for {pdb_id}"}
+            
+            # Extract heteroatom codes
+            het_codes, het_details = self.extractor.extract_all_heteroatoms(lines)
+            
+            # Filter out common non-interesting heteroatoms (water)
+            interesting = [c for c in het_codes if c != "HOH"]
+            
+            result = {
+                "status": "success",
+                "pdb_id": pdb_id,
+                "total_heteroatoms": len(het_codes),
+                "heteroatom_codes": het_codes,
+                "ligands_and_cofactors": interesting,
+                "note": "HOH = water molecules"
+            }
+            
+            # Optionally fetch SMILES for each interesting heteroatom
+            if include_smiles:
+                smiles_map = {}
+                for code in interesting[:15]:  # cap to avoid long waits
+                    try:
+                        smiles = self.extractor.fetch_smiles_enhanced(code)
+                        if smiles:
+                            smiles_map[code] = smiles
+                    except Exception:
+                        pass
+                result["smiles"] = smiles_map
+            
+            return result
+        
+        except Exception as e:
+            return {"error": str(e), "status": "failed"}
+    
     async def _validate_smiles(self, smiles: str) -> dict:
-        """Validate SMILES string"""
+        """Validate SMILES string using RDKit"""
         try:
             if not self.analyzer:
-                return {"error": "MolecularSimilarityAnalyzer not available"}
+                return {"error": "MolecularSimilarityAnalyzer not available (rdkit may not be installed)"}
             
-            is_valid = self.analyzer.validate_smiles(smiles)
+            # A SMILES is valid if RDKit can build a fingerprint from it
+            fp = self.analyzer.smiles_to_fingerprint(smiles)
+            is_valid = fp is not None
             
             return {
                 "smiles": smiles,

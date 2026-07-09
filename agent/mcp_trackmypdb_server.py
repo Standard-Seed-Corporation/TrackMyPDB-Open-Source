@@ -11,8 +11,18 @@ from typing import Any
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-# Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'TrackMyPDB-Open-Source-sakeer'))
+# Add backend to path — try multiple locations so this works whether the
+# MCP server sits in the repo root or inside the agent/ subfolder.
+_here = os.path.dirname(os.path.abspath(__file__))
+_candidate_paths = [
+    _here,                                # same folder as this file
+    os.path.dirname(_here),               # parent (repo root, if file is in agent/)
+    os.path.join(_here, 'TrackMyPDB-Open-Source-sakeer'),  # local dev layout
+]
+for _p in _candidate_paths:
+    if os.path.isdir(os.path.join(_p, 'backend')):
+        sys.path.insert(0, _p)
+        break
 
 try:
     from backend.heteroatom_extractor import HeteroatomExtractor
@@ -110,6 +120,20 @@ class MCPServer:
                 }
             },
             {
+                "name": "get_protein_info",
+                "description": "Get authoritative protein information (name, gene, organism, function) from the UniProt database for a given UniProt ID. ALWAYS use this before describing what a protein is — do not rely on prior knowledge, as protein IDs are easy to confuse.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "uniprot_id": {
+                            "type": "string",
+                            "description": "UniProt protein identifier (e.g., P37231, Q9UNQ0)"
+                        }
+                    },
+                    "required": ["uniprot_id"]
+                }
+            },
+            {
                 "name": "validate_smiles",
                 "description": "Validate if a SMILES string is valid and return molecular properties",
                 "inputSchema": {
@@ -167,6 +191,9 @@ class MCPServer:
         
         elif tool_name == "get_pdb_structures":
             return await self._get_pdb_structures(tool_input["uniprot_id"])
+        
+        elif tool_name == "get_protein_info":
+            return await self._get_protein_info(tool_input["uniprot_id"])
         
         elif tool_name == "validate_smiles":
             return await self._validate_smiles(tool_input["smiles"])
@@ -258,6 +285,58 @@ class MCPServer:
         
         except Exception as e:
             return {"error": str(e), "status": "failed"}
+    
+    async def _get_protein_info(self, uniprot_id: str) -> dict:
+        """Fetch authoritative protein information from the UniProt REST API"""
+        try:
+            import requests
+            
+            uniprot_id = uniprot_id.strip().upper()
+            url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.json"
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            # Protein (recommended) name
+            protein_name = None
+            desc = data.get("proteinDescription", {})
+            rec = desc.get("recommendedName", {})
+            if rec.get("fullName", {}).get("value"):
+                protein_name = rec["fullName"]["value"]
+            elif desc.get("submissionNames"):
+                protein_name = desc["submissionNames"][0].get("fullName", {}).get("value")
+            
+            # Gene name
+            gene_name = None
+            genes = data.get("genes", [])
+            if genes and genes[0].get("geneName", {}).get("value"):
+                gene_name = genes[0]["geneName"]["value"]
+            
+            # Organism
+            organism = data.get("organism", {}).get("scientificName")
+            
+            # Function (first function comment)
+            function_text = None
+            for comment in data.get("comments", []):
+                if comment.get("commentType") == "FUNCTION":
+                    texts = comment.get("texts", [])
+                    if texts:
+                        function_text = texts[0].get("value")
+                        break
+            
+            return {
+                "status": "success",
+                "uniprot_id": uniprot_id,
+                "protein_name": protein_name or "Unknown",
+                "gene_name": gene_name or "Unknown",
+                "organism": organism or "Unknown",
+                "function": function_text or "No function description available",
+                "source": "UniProt REST API"
+            }
+        
+        except Exception as e:
+            return {"error": str(e), "status": "failed",
+                    "message": f"Could not retrieve info for {uniprot_id} from UniProt"}
     
     async def _validate_smiles(self, smiles: str) -> dict:
         """Validate SMILES string"""

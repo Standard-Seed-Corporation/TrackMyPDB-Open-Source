@@ -2068,23 +2068,30 @@ def show_disease_enrichment_page():
             label_visibility="collapsed"
         )
         
-        if uniprot_input and st.button("🔍 Fetch Disease Annotations", type="primary"):
-            # ROBUST PARSING: Handle commas, spaces, newlines, and mixed delimiters
-            import re
-            # Split by any combination of whitespace (spaces, tabs, newlines) and/or commas
-            uniprot_ids = [uid.strip().upper() for uid in re.split(r'[\s,]+', uniprot_input) if uid.strip()]
-            
-            if uniprot_ids:
-                # Create a simple DataFrame
-                results_df = pd.DataFrame({
-                    'UniProt_IDs': uniprot_ids,
-                    'PDB_ID': ['N/A'] * len(uniprot_ids)
-                })
-                st.success(f"✅ Parsed {len(uniprot_ids)} UniProt ID(s): {', '.join(uniprot_ids[:5])}{' ...' if len(uniprot_ids) > 5 else ''}")
-            else:
-                st.error("❌ No valid UniProt IDs found. Please check your input.")
-        elif not uniprot_input:
+        if uniprot_input:
+            if st.button("🔍 Create Dataset from UniProt IDs", type="primary"):
+                # ROBUST PARSING: Handle commas, spaces, newlines, and mixed delimiters
+                import re
+                # Split by any combination of whitespace (spaces, tabs, newlines) and/or commas
+                uniprot_ids = [uid.strip().upper() for uid in re.split(r'[\s,]+', uniprot_input) if uid.strip()]
+                
+                if uniprot_ids:
+                    # Create a simple DataFrame
+                    results_df = pd.DataFrame({
+                        'UniProt_IDs': uniprot_ids,
+                        'PDB_ID': ['N/A'] * len(uniprot_ids)
+                    })
+                    # Store in session state so it persists
+                    st.session_state['manual_uniprot_df'] = results_df
+                    st.success(f"✅ Parsed {len(uniprot_ids)} UniProt ID(s): {', '.join(uniprot_ids[:5])}{' ...' if len(uniprot_ids) > 5 else ''}")
+                else:
+                    st.error("❌ No valid UniProt IDs found. Please check your input.")
+        else:
             st.info("ℹ️ Enter UniProt IDs above and click the button to proceed.")
+        
+        # Load from session state if exists
+        if 'manual_uniprot_df' in st.session_state:
+            results_df = st.session_state['manual_uniprot_df']
     
     # Main analysis section
     if results_df is not None and len(results_df) > 0:

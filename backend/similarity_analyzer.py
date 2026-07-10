@@ -40,7 +40,8 @@ class MolecularSimilarityAnalyzer:
 
     def smiles_to_fingerprint(self, smiles):
         """
-        Convert SMILES string to Morgan fingerprint.
+        Convert SMILES string to Morgan fingerprint with robust canonicalization.
+        Fixes the fingerprint matching bug by ensuring proper sanitization.
         
         Args:
             smiles (str): SMILES string
@@ -52,17 +53,43 @@ class MolecularSimilarityAnalyzer:
             if not smiles or pd.isna(smiles) or smiles.strip() == '':
                 return None
 
-            mol = Chem.MolFromSmiles(smiles.strip())
+            # Step 1: Create molecule with explicit sanitization
+            mol = Chem.MolFromSmiles(smiles.strip(), sanitize=False)
             if mol is None:
                 return None
+            
+            # Step 2: Attempt sanitization with error handling
+            try:
+                Chem.SanitizeMol(mol)
+            except Exception as sanitize_error:
+                # Try relaxed sanitization if strict fails
+                try:
+                    Chem.SanitizeMol(
+                        mol,
+                        sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL ^ 
+                                   Chem.SanitizeFlags.SANITIZE_KEKULIZE
+                    )
+                except:
+                    # If all sanitization fails, skip this molecule
+                    return None
+            
+            # Step 3: Convert to canonical SMILES for consistency
+            try:
+                canonical_smiles = Chem.MolToSmiles(mol, canonical=True)
+                mol = Chem.MolFromSmiles(canonical_smiles)  # Recreate from canonical
+                if mol is None:
+                    return None
+            except:
+                return None
 
-            # Generate Morgan fingerprint - exact same as Colab
+            # Step 4: Generate Morgan fingerprint with user-specified nBits
             fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
                 mol, self.radius, nBits=self.n_bits
             )
             return fp
+            
         except Exception as e:
-            st.warning(f"⚠️ Error processing SMILES '{smiles}': {e}")
+            # Silently skip problematic molecules without breaking the pipeline
             return None
 
     def calculate_tanimoto_similarity(self, fp1, fp2):

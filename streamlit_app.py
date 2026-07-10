@@ -393,7 +393,7 @@ def main():
         "🔍 Heteroatom Extraction", 
         "🧪 Similarity Analysis", 
         "🔬 SMILES Database Search", 
-        "📊 Complete Pipeline",
+        "� Legacy Search",
         "🖼️ Molecule Visualizer", 
         "🏥 Disease Enrichment"
     ]
@@ -426,7 +426,7 @@ def main():
         show_similarity_page()
     elif page == "🔬 SMILES Database Search":
         show_smiles_database_search()
-    elif page == "📊 Complete Pipeline":
+    elif page == "� Legacy Search":
         show_complete_pipeline()
     elif page == "🖼️ Molecule Visualizer":
         show_molecule_visualizer_page()
@@ -507,7 +507,7 @@ def show_home_page():
         """, unsafe_allow_html=True)
         
         if st.button("Launch Legacy Search", key="btn_legacy", use_container_width=True):
-            st.session_state['nav_page'] = "📊 Complete Pipeline"
+            st.session_state['nav_page'] = "� Legacy Search"
             st.rerun()
     
     # Row 2: Database Search and Disease Analysis
@@ -1106,15 +1106,19 @@ def show_similarity_page():
                 )
 
 def show_smiles_database_search():
-    """Display SMILES database search interface for finding similar PDB ligands"""
+    """
+    SMILES Database Search - Query pre-built PDB ligand database using molecular fingerprints
+    """
     
-    st.markdown('<div class="section-header">🔬 SMILES Database Search</div>', unsafe_allow_html=True)
+    # Clean header - no grey background
+    st.markdown("""
+        <h2 style='color: #2E7D32; font-weight: 600; margin-bottom: 1.5rem; background: transparent;'>
+            SMILES Database Search
+        </h2>
+    """, unsafe_allow_html=True)
     
     st.markdown("""
-    Search the PDB ligands database using your SMILES structure. This tool will:
-    1. Generate Morgan fingerprints for your input SMILES
-    2. Compare against all co-crystallized ligands in the database
-    3. Return top matching PDB IDs with their similarity scores
+    Search the PDB ligands database using your SMILES structure to find similar co-crystallized ligands.
     """)
     
     # Check if database exists
@@ -1123,73 +1127,103 @@ def show_smiles_database_search():
         st.error(f"❌ Database file '{db_path}' not found. Please ensure the file exists in the application directory.")
         return
     
-    # Input section
-    st.subheader("🎯 Input SMILES")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        target_smiles = st.text_area(
-            "Target SMILES Structure",
-            placeholder="Enter SMILES string (e.g., CCO for ethanol)\nYou can enter multiple SMILES, one per line",
-            height=120,
-            help="Enter the SMILES representation of your target molecule(s)"
-        )
-        
-        # SMILES validation
-        if target_smiles:
-            smiles_list = [s.strip() for s in target_smiles.strip().split('\n') if s.strip()]
-            
-            if RDKIT_AVAILABLE:
-                try:
-                    from rdkit import Chem
-                    valid_count = 0
-                    for smiles in smiles_list:
-                        mol = Chem.MolFromSmiles(smiles)
-                        if mol is not None:
-                            valid_count += 1
-                    
-                    if valid_count == len(smiles_list):
-                        st.success(f"✅ All {len(smiles_list)} SMILES structure(s) are valid")
-                    else:
-                        st.warning(f"⚠️ {valid_count}/{len(smiles_list)} SMILES structure(s) are valid")
-                except Exception as e:
-                    st.error(f"❌ Error validating SMILES: {str(e)}")
-            else:
-                st.info(f"Found {len(smiles_list)} SMILES structure(s)")
-    
-    with col2:
-        st.markdown("#### ⚙️ Search Parameters")
-        
-        top_n = st.slider("Number of Top Results", 5, 100, 20, help="Number of top matching PDB IDs to return")
-        min_similarity = st.slider("Minimum Similarity Threshold", 0.0, 1.0, 0.3, 0.05, help="Minimum Tanimoto similarity score (0-1)")
-        
-        st.markdown("#### 📊 Fingerprint Settings")
-        radius = st.selectbox("Morgan Fingerprint Radius", [1, 2, 3], index=1, help="Radius for Morgan fingerprint generation")
-        n_bits = st.selectbox("Fingerprint Bits", [1024, 2048, 4096], index=1, help="Number of bits in fingerprint")
-    
-    # Database info
-    st.subheader("📚 Database Information")
-    
+    # Load database info for sidebar metrics
     try:
         db_df = pd.read_csv(db_path)
-        
-        # Filter out entries without SMILES
         db_df_valid = db_df[db_df['SMILES'].notna() & (db_df['SMILES'] != '')]
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Ligands", len(db_df))
-        with col2:
-            st.metric("Valid SMILES", len(db_df_valid))
-        with col3:
-            st.metric("Unique PDB IDs", db_df['PDB_ID'].nunique())
-        with col4:
-            st.metric("Unique Ligands", db_df['Heteroatom_Code'].nunique())
-        
+        db_total = len(db_df)
+        db_valid = len(db_df_valid)
+        db_unique_pdbs = db_df['PDB_ID'].nunique()
+        db_unique_ligands = db_df['Heteroatom_Code'].nunique()
     except Exception as e:
         st.error(f"Error loading database: {str(e)}")
         return
+    
+    # Input section - FULL WIDTH (no columns)
+    st.markdown("### Input SMILES")
+    
+    target_smiles = st.text_area(
+        "Target SMILES Structure",
+        placeholder="Enter SMILES string (e.g., CCO for ethanol)\nYou can enter multiple SMILES, one per line",
+        height=150,
+        help="Enter the SMILES representation of your target molecule(s)",
+        label_visibility="collapsed"
+    )
+    
+    # SMILES validation
+    if target_smiles:
+        smiles_list = [s.strip() for s in target_smiles.strip().split('\n') if s.strip()]
+        
+        if RDKIT_AVAILABLE:
+            try:
+                from rdkit import Chem
+                valid_count = 0
+                for smiles in smiles_list:
+                    mol = Chem.MolFromSmiles(smiles)
+                    if mol is not None:
+                        valid_count += 1
+                
+                if valid_count == len(smiles_list):
+                    st.success(f"✅ All {len(smiles_list)} SMILES structure(s) are valid")
+                else:
+                    st.warning(f"⚠️ {valid_count}/{len(smiles_list)} SMILES structure(s) are valid")
+            except Exception as e:
+                st.error(f"❌ Error validating SMILES: {str(e)}")
+        else:
+            st.info(f"Found {len(smiles_list)} SMILES structure(s)")
+    
+    # Advanced parameters in collapsible expander
+    with st.expander("⚙️ Advanced Search & Fingerprint Parameters", expanded=False):
+        st.markdown("**Search Configuration**")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            top_n = st.slider(
+                "Number of Top Results", 
+                5, 100, 20, 
+                help="Number of top matching PDB IDs to return"
+            )
+        
+        with col2:
+            min_similarity = st.slider(
+                "Min Similarity Threshold", 
+                0.0, 1.0, 0.3, 0.05, 
+                help="Minimum Tanimoto similarity score (0-1)"
+            )
+        
+        st.markdown("**Fingerprint Settings**")
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            radius = st.selectbox(
+                "Morgan Radius", 
+                [1, 2, 3], 
+                index=1, 
+                help="Radius for Morgan fingerprint generation"
+            )
+        
+        with col4:
+            n_bits = st.selectbox(
+                "Fingerprint Bits", 
+                [1024, 2048, 4096], 
+                index=1, 
+                help="Number of bits in fingerprint"
+            )
+    
+    # Set defaults if expander is not used
+    if 'top_n' not in locals():
+        top_n = 20
+    if 'min_similarity' not in locals():
+        min_similarity = 0.3
+    if 'radius' not in locals():
+        radius = 2
+    if 'n_bits' not in locals():
+        n_bits = 2048
+    
+    # Database info metrics - moved to bottom as caption
+    st.caption(f"📚 Database: {db_total:,} total ligands | {db_valid:,} valid SMILES | {db_unique_pdbs:,} unique PDB IDs | {db_unique_ligands:,} unique ligand types")
+    
+    st.markdown("---")
     
     # Run search
     if st.button("🔍 Search Database", type="primary"):
@@ -1313,7 +1347,11 @@ def show_smiles_database_search():
             st.info(f"ℹ️ Showing top {top_n} results out of {len(all_stored_results)} total matches. Adjust the 'Number of Top Results' slider and the display will update automatically.")
         
         # Display results section
-        st.markdown('<div class="section-header">📊 Search Results</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <h3 style='color: #2E7D32; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; background: transparent;'>
+                Search Results
+            </h3>
+        """, unsafe_allow_html=True)
         
         # Summary metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -1356,7 +1394,11 @@ def show_smiles_database_search():
         )
         
         st.markdown("---")
-        st.markdown('<div class="section-header">🧬 Protein Target Information</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <h3 style='color: #2E7D32; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; background: transparent;'>
+                Protein Target Information
+            </h3>
+        """, unsafe_allow_html=True)
         
         st.markdown("""
         Fetch additional protein information for the PDB structures found in your search results.
@@ -1508,7 +1550,11 @@ def show_smiles_database_search():
         
         # Visualizations (if RDKit available)
         if RDKIT_AVAILABLE and len(final_results) > 0:
-            st.markdown('<div class="section-header">📈 Similarity Distribution</div>', unsafe_allow_html=True)
+            st.markdown("""
+                <h3 style='color: #2E7D32; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; background: transparent;'>
+                    Similarity Distribution
+                </h3>
+            """, unsafe_allow_html=True)
             
             try:
                 import plotly.express as px
@@ -1557,38 +1603,47 @@ def show_smiles_database_search():
                 st.warning(f"Could not generate visualizations: {str(e)}")
 
 def show_complete_pipeline():
-    """Display complete pipeline interface"""
+    """
+    Legacy Search - Complete automated pipeline from UniProt to similarity results
+    """
     
-    st.markdown('<div class="section-header">📊 Complete Pipeline</div>', unsafe_allow_html=True)
+    # Clean header - no grey background
+    st.markdown("""
+        <h2 style='color: #2E7D32; font-weight: 600; margin-bottom: 1.5rem; background: transparent;'>
+            Legacy Search
+        </h2>
+    """, unsafe_allow_html=True)
     
     st.markdown("""
-    Run the complete TrackMyPDB pipeline in one go:
-    1. Extract heteroatoms from UniProt proteins
-    2. Analyze molecular similarity to target compound
-    3. Generate comprehensive results
+    Automated pipeline: Extract heteroatoms from UniProt proteins → Analyze molecular similarity to target compound.
     """)
     
-    # Input section
-    col1, col2 = st.columns(2)
+    # Input section - STACKED VERTICALLY for better space
+    st.markdown("### Input Parameters")
     
-    with col1:
-        st.subheader("📋 UniProt Input")
-        uniprot_input = st.text_area(
-            "UniProt IDs",
-            placeholder="Q9UNQ0, P37231, P06276",
-            height=100
-        )
+    # UniProt IDs - full width
+    st.markdown("**UniProt IDs**")
+    uniprot_input = st.text_area(
+        "Enter UniProt IDs (comma-separated or one per line)",
+        placeholder="Example: Q9UNQ0, P37231, P06276",
+        height=120,
+        label_visibility="collapsed"
+    )
     
-    with col2:
-        st.subheader("🎯 Target Molecule")
-        target_smiles = st.text_input(
-            "Target SMILES",
-            placeholder="CCO"
-        )
+    # Target SMILES - full width
+    st.markdown("**Target Molecule SMILES**")
+    target_smiles = st.text_area(
+        "Enter target SMILES structure",
+        placeholder="Example: CCO (ethanol), CC(=O)Oc1ccccc1C(=O)O (aspirin)",
+        height=80,
+        label_visibility="collapsed"
+    )
     
-    # Parameters
-    st.subheader("⚙️ Analysis Parameters")
-    col1, col2, col3 = st.columns(3)
+    # Analysis Parameters
+    st.markdown("---")
+    st.markdown("### Analysis Parameters")
+    
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         top_n = st.slider("Top Results", 10, 100, 50)
@@ -1596,11 +1651,20 @@ def show_complete_pipeline():
         min_similarity = st.slider("Min Similarity", 0.0, 1.0, 0.2, 0.1)
     with col3:
         radius = st.selectbox("Morgan Radius", [1, 2, 3], index=1)
+    with col4:
+        # NEW: Fingerprint Bits configuration
+        fingerprint_bits = st.selectbox(
+            "Fingerprint Bits", 
+            [1024, 2048], 
+            index=1,  # Default to 2048
+            help="Number of bits for Morgan fingerprint (higher = more precise)"
+        )
     
-    # Run complete pipeline
-    if st.button("🚀 Run Complete Pipeline", type="primary"):
+    # Run pipeline button
+    st.markdown("---")
+    if st.button("🚀 Run Legacy Search", type="primary", use_container_width=True):
         if not uniprot_input or not target_smiles:
-            st.error("Please provide both UniProt IDs and target SMILES")
+            st.error("❌ Please provide both UniProt IDs and target SMILES")
             return
         
         # Parse UniProt IDs
@@ -1611,8 +1675,10 @@ def show_complete_pipeline():
                 if up_id:
                     uniprot_ids.append(up_id)
         
+        st.info(f"🔍 Processing {len(uniprot_ids)} UniProt ID(s)...")
+        
         # Step 1: Heteroatom Extraction
-        st.info("Step 1: Extracting heteroatoms...")
+        st.markdown("### Step 1: Extracting Heteroatoms")
         extractor = HeteroatomExtractor()
         
         progress_bar = st.progress(0)
@@ -1625,11 +1691,20 @@ def show_complete_pipeline():
         try:
             heteroatom_df = extractor.extract_heteroatoms(uniprot_ids, progress_callback=update_progress)
             
-            # Step 2: Similarity Analysis
-            status_text.text("Step 2: Analyzing molecular similarity...")
+            st.success(f"✅ Extracted {len(heteroatom_df)} heteroatom records from {heteroatom_df['PDB_ID'].nunique()} PDB structures")
+            
+            # Step 2: Similarity Analysis with FIXED fingerprint matching
+            st.markdown("### Step 2: Analyzing Molecular Similarity")
+            status_text.text("Computing fingerprints and similarity scores...")
             progress_bar.progress(0.7)
             
-            analyzer = MolecularSimilarityAnalyzer(radius=radius)
+            # Initialize analyzer with user-specified parameters
+            analyzer = MolecularSimilarityAnalyzer(
+                radius=radius,
+                n_bits=fingerprint_bits  # Use selected fingerprint bits
+            )
+            
+            # Run similarity analysis with improved canonicalization
             similarity_results = analyzer.analyze_similarity(
                 target_smiles=target_smiles,
                 heteroatom_df=heteroatom_df,
@@ -1638,7 +1713,8 @@ def show_complete_pipeline():
             )
             
             progress_bar.progress(1.0)
-            status_text.text("Pipeline completed successfully!")
+            status_text.empty()
+            progress_bar.empty()
             
             # Store results in session state
             st.session_state['pipeline_heteroatom_data'] = heteroatom_df
@@ -1649,7 +1725,15 @@ def show_complete_pipeline():
             if not similarity_results.empty:
                 similarity_results.to_csv("complete_pipeline_similarity.csv", index=False)
             
+            # Display summary
+            if not similarity_results.empty:
+                st.success(f"✅ Found {len(similarity_results)} similar molecules above threshold {min_similarity}")
+            else:
+                st.warning("⚠️ No molecules found above the similarity threshold")
+            
             # Download buttons
+            st.markdown("---")
+            st.markdown("### Download Results")
             col1, col2 = st.columns(2)
             
             with col1:
@@ -1658,7 +1742,8 @@ def show_complete_pipeline():
                     label="📥 Download Heteroatom Results",
                     data=csv1,
                     file_name=f"heteroatoms_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
+                    mime="text/csv",
+                    use_container_width=True
                 )
             
             with col2:
@@ -1668,14 +1753,14 @@ def show_complete_pipeline():
                         label="📥 Download Similarity Results",
                         data=csv2,
                         file_name=f"similarity_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv"
+                        mime="text/csv",
+                        use_container_width=True
                     )
             
-            progress_bar.empty()
-            status_text.empty()
-            
         except Exception as e:
-            st.error(f"Pipeline error: {str(e)}")
+            st.error(f"❌ Pipeline error: {str(e)}")
+            import traceback
+            st.error(f"Details: {traceback.format_exc()}")
             progress_bar.empty()
             status_text.empty()
     
@@ -1813,18 +1898,17 @@ def show_complete_pipeline():
                 )
 
 def show_molecule_visualizer_page():
-    """Page for molecular visualization and property calculation"""
+    """
+    Molecule Visualizer & Properties - Simplified UI with 5 Core Properties
+    Calculates: MW, LogP, HBD, HBA, TPSA
+    """
     
-    st.markdown('<div class="section-header">🖼️ Molecule Visualizer & Properties</div>', unsafe_allow_html=True)
-    
+    # Clean header - no grey background, no features list
     st.markdown("""
-    **Features:**
-    - 🎨 2D molecular structure visualization
-    - 📊 Physicochemical property calculation
-    - ✍️ Draw structures or input SMILES
-    - 💊 Lipinski's Rule of Five analysis
-    - 🔍 Name-to-SMILES resolution
-    """)
+        <h2 style='color: #2E7D32; font-weight: 600; margin-bottom: 1.5rem; background: transparent;'>
+            Molecule Visualizer & Properties
+        </h2>
+    """, unsafe_allow_html=True)
     
     if not RDKIT_AVAILABLE:
         st.error("❌ RDKit is required for molecular visualization. Please install: `pip install rdkit`")
@@ -1833,20 +1917,20 @@ def show_molecule_visualizer_page():
     visualizer = MoleculeVisualizer()
     drawing_tool = ChemicalDrawingTool()
     
-    # Input section
+    # Input section (now simplified - no "Search by Name")
     smiles = drawing_tool.simple_smiles_input()
     
     if smiles:
         st.markdown("---")
-        st.subheader("🧬 Molecular Structure")
         
+        # Layout: 2D Structure + Properties side by side
         col1, col2 = st.columns([1, 1])
         
         with col1:
             st.markdown("### 2D Structure")
             visualizer.display_molecule(smiles, caption=f"SMILES: {smiles}")
             
-            # SMILES info
+            # SMILES display
             st.code(smiles, language="text")
             
             # Download options
@@ -1863,70 +1947,50 @@ def show_molecule_visualizer_page():
         
         with col2:
             st.markdown("### Physicochemical Properties")
+            
+            # Calculate properties (now returns only 5 core descriptors)
             properties = visualizer.calculate_properties(smiles)
             
             if properties:
-                # Display in organized sections
-                st.markdown("#### 📏 Basic Properties")
-                st.metric("Molecular Weight", f"{properties['Molecular_Weight']} Da")
-                st.metric("Formula", properties['Formula'])
-                st.metric("Exact Mass", f"{properties['Exact_Mass']} Da")
+                # Display 5 core properties in a clean row
+                st.markdown("#### Core Descriptors")
                 
-                st.markdown("#### 💊 Lipinski's Rule of Five")
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    st.metric("LogP", properties['LogP'])
-                    st.metric("HB Donors", properties['HBD'])
-                with col_b:
-                    st.metric("HB Acceptors", properties['HBA'])
-                    
-                    # Color-coded violations
-                    violations = properties['Lipinski_Violations']
-                    if violations == 0:
-                        st.metric("Violations", violations, delta="✅ Pass", delta_color="normal")
-                    elif violations == 1:
-                        st.metric("Violations", violations, delta="⚠️ Acceptable", delta_color="off")
-                    else:
-                        st.metric("Violations", violations, delta="❌ Fail", delta_color="inverse")
+                cols = st.columns(5)
                 
-                st.markdown("#### 🔗 Topology")
-                col_c, col_d = st.columns(2)
-                with col_c:
-                    st.metric("Rotatable Bonds", properties['Rotatable_Bonds'])
-                    st.metric("Aromatic Rings", properties['Aromatic_Rings'])
-                with col_d:
-                    st.metric("Heavy Atoms", properties['Heavy_Atoms'])
-                    st.metric("Stereocenters", properties['Num_Stereocenters'])
+                with cols[0]:
+                    st.metric(
+                        "MW", 
+                        f"{properties['Molecular_Weight']}",
+                        help="Molecular Weight (Da)"
+                    )
                 
-                st.markdown("#### 📊 Advanced Properties")
-                col_e, col_f = st.columns(2)
-                with col_e:
-                    st.metric("TPSA", f"{properties['TPSA']} Ų")
-                    st.metric("QED Score", properties['QED'])
-                with col_f:
-                    st.metric("Fraction Csp3", properties['Fraction_Csp3'])
-                    st.metric("Molar Refractivity", properties['Molar_Refractivity'])
+                with cols[1]:
+                    st.metric(
+                        "LogP", 
+                        f"{properties['LogP']}",
+                        help="Partition coefficient (lipophilicity)"
+                    )
                 
-                # Interpretation
-                st.markdown("---")
-                st.subheader("💊 Drug-Likeness Assessment")
+                with cols[2]:
+                    st.metric(
+                        "HBD", 
+                        f"{properties['HBD']}",
+                        help="Hydrogen Bond Donors"
+                    )
                 
-                violations = properties['Lipinski_Violations']
-                if violations == 0:
-                    st.success("✅ **Excellent drug-likeness** - Passes all Lipinski criteria")
-                elif violations == 1:
-                    st.warning("⚠️ **Good drug-likeness** - One Lipinski violation (acceptable)")
-                else:
-                    st.error(f"❌ **Poor drug-likeness** - {violations} Lipinski violations")
+                with cols[3]:
+                    st.metric(
+                        "HBA", 
+                        f"{properties['HBA']}",
+                        help="Hydrogen Bond Acceptors"
+                    )
                 
-                # QED interpretation
-                qed = properties['QED']
-                if qed >= 0.7:
-                    st.success(f"✅ **High QED score ({qed})** - Excellent drug-like qualities")
-                elif qed >= 0.5:
-                    st.info(f"ℹ️ **Moderate QED score ({qed})** - Reasonable drug-like qualities")
-                else:
-                    st.warning(f"⚠️ **Low QED score ({qed})** - Limited drug-like qualities")
+                with cols[4]:
+                    st.metric(
+                        "TPSA", 
+                        f"{properties['TPSA']}",
+                        help="Topological Polar Surface Area (Ų)"
+                    )
                 
                 # Download properties
                 st.markdown("---")
@@ -1936,65 +2000,98 @@ def show_molecule_visualizer_page():
                     label="📥 Download Properties (CSV)",
                     data=csv,
                     file_name=f"properties_{smiles[:20]}.csv",
-                    mime="text/csv"
+                    mime="text/csv",
+                    use_container_width=True
                 )
+            else:
+                st.error("❌ Could not calculate properties for this molecule")
 
 
 def show_disease_enrichment_page():
-    """Page for disease-based filtering and enrichment"""
+    """
+    Disease Enrichment Analysis - Map proteins to disease associations and annotations
+    """
     
-    st.markdown('<div class="section-header">🏥 Disease Enrichment Analysis</div>', unsafe_allow_html=True)
+    # Clean header - no grey background
+    st.markdown("""
+        <h2 style='color: #2E7D32; font-weight: 600; margin-bottom: 1.5rem; background: transparent;'>
+            Disease Enrichment Analysis
+        </h2>
+    """, unsafe_allow_html=True)
     
     st.markdown("""
-    **Map your protein targets to disease associations** and filter results by disease categories.
-    
-    **Data Sources:**
-    - UniProt disease annotations
-    - Gene-disease associations
-    - Clinical relevance filtering
+    Map protein targets to disease associations and filter results by disease categories.
     """)
     
     annotator = DiseaseAnnotator()
     
-    # Check if we have results to enrich
+    # Results source selection
+    st.markdown("### Data Source Selection")
     results_source = st.selectbox(
         "Select Results Source",
-        ["Similarity Analysis Results", "SMILES Database Search", "Complete Pipeline", "Manual UniProt Input"]
+        ["Similarity Analysis Results", "SMILES Database Search", "Legacy Search", "Manual UniProt Input"],
+        help="Choose where to load protein data from"
     )
     
     results_df = None
     
-    if results_source == "Similarity Analysis Results" and 'enriched_similarity_results' in st.session_state:
-        results_df = st.session_state['enriched_similarity_results']
-        st.success(f"✅ Loaded {len(results_df)} similarity analysis results")
-    elif results_source == "SMILES Database Search" and 'enriched_results' in st.session_state:
-        results_df = st.session_state['enriched_results']
-        st.success(f"✅ Loaded {len(results_df)} SMILES search results")
-    elif results_source == "Complete Pipeline" and 'enriched_pipeline_results' in st.session_state:
-        results_df = st.session_state['enriched_pipeline_results']
-        st.success(f"✅ Loaded {len(results_df)} complete pipeline results")
+    # Handle different data sources
+    if results_source == "Similarity Analysis Results":
+        if 'enriched_similarity_results' in st.session_state:
+            results_df = st.session_state['enriched_similarity_results']
+            st.success(f"✅ Loaded {len(results_df)} similarity analysis results")
+        else:
+            st.warning("⚠️ No similarity analysis results found. Please run a similarity analysis first.")
+    
+    elif results_source == "SMILES Database Search":
+        if 'enriched_results' in st.session_state:
+            results_df = st.session_state['enriched_results']
+            st.success(f"✅ Loaded {len(results_df)} SMILES search results")
+        else:
+            st.warning("⚠️ No SMILES search results found. Please run a database search first.")
+    
+    elif results_source == "Legacy Search":
+        if 'enriched_pipeline_results' in st.session_state:
+            results_df = st.session_state['enriched_pipeline_results']
+            st.success(f"✅ Loaded {len(results_df)} legacy search results")
+        else:
+            st.warning("⚠️ No legacy search results found. Please run the legacy pipeline first.")
+    
     elif results_source == "Manual UniProt Input":
+        # ALWAYS show the input box when Manual is selected
+        st.markdown("**Enter UniProt IDs**")
         uniprot_input = st.text_area(
-            "Enter UniProt IDs (one per line)",
-            placeholder="P04637\nQ9UNQ0\nP37231",
-            height=100
+            "UniProt IDs (comma, space, or newline separated)",
+            placeholder="Examples:\nP04637, Q9UNQ0, P37231\nor\nP04637 Q9UNQ0 P37231\nor\nP04637\nQ9UNQ0\nP37231",
+            height=120,
+            help="Enter UniProt IDs separated by commas, spaces, or newlines",
+            label_visibility="collapsed"
         )
         
-        if uniprot_input and st.button("🔍 Fetch Disease Annotations"):
-            uniprot_ids = [uid.strip() for uid in uniprot_input.split('\n') if uid.strip()]
+        if uniprot_input and st.button("🔍 Fetch Disease Annotations", type="primary"):
+            # ROBUST PARSING: Handle commas, spaces, newlines, and mixed delimiters
+            import re
+            # Split by any combination of whitespace (spaces, tabs, newlines) and/or commas
+            uniprot_ids = [uid.strip().upper() for uid in re.split(r'[\s,]+', uniprot_input) if uid.strip()]
             
-            # Create a simple DataFrame
-            results_df = pd.DataFrame({
-                'UniProt_IDs': uniprot_ids,
-                'PDB_ID': ['N/A'] * len(uniprot_ids)
-            })
-            st.success(f"✅ Created dataset with {len(results_df)} UniProt IDs")
+            if uniprot_ids:
+                # Create a simple DataFrame
+                results_df = pd.DataFrame({
+                    'UniProt_IDs': uniprot_ids,
+                    'PDB_ID': ['N/A'] * len(uniprot_ids)
+                })
+                st.success(f"✅ Parsed {len(uniprot_ids)} UniProt ID(s): {', '.join(uniprot_ids[:5])}{' ...' if len(uniprot_ids) > 5 else ''}")
+            else:
+                st.error("❌ No valid UniProt IDs found. Please check your input.")
+        elif not uniprot_input:
+            st.info("ℹ️ Enter UniProt IDs above and click the button to proceed.")
     
+    # Main analysis section
     if results_df is not None and len(results_df) > 0:
         
         # Disease filter options
         st.markdown("---")
-        st.subheader("🔍 Disease Filter Options")
+        st.markdown("### Disease Filter Options")
         
         col1, col2 = st.columns(2)
         
@@ -2013,8 +2110,9 @@ def show_disease_enrichment_page():
             )
         
         # Run enrichment
-        if st.button("🚀 Run Disease Enrichment", type="primary"):
-            with st.spinner("Fetching disease annotations..."):
+        st.markdown("---")
+        if st.button("🚀 Run Disease Enrichment", type="primary", use_container_width=True):
+            with st.spinner("Fetching disease annotations from UniProt..."):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
@@ -2038,7 +2136,11 @@ def show_disease_enrichment_page():
             enriched_df = st.session_state['disease_enriched_results']
             
             st.markdown("---")
-            st.subheader("📊 Disease-Enriched Results")
+            st.markdown("""
+                <h3 style='color: #2E7D32; font-weight: 600; margin-top: 1rem; margin-bottom: 1rem; background: transparent;'>
+                    Disease-Enriched Results
+                </h3>
+            """, unsafe_allow_html=True)
             
             # Apply filters if selected
             filtered_df = enriched_df.copy()
@@ -2067,7 +2169,11 @@ def show_disease_enrichment_page():
             
             # Disease summary
             st.markdown("---")
-            st.subheader("📈 Disease Summary")
+            st.markdown("""
+                <h3 style='color: #2E7D32; font-weight: 600; margin-top: 1rem; margin-bottom: 1rem; background: transparent;'>
+                    Disease Summary
+                </h3>
+            """, unsafe_allow_html=True)
             
             # Count disease mentions
             all_diseases = []
@@ -2095,7 +2201,7 @@ def show_disease_enrichment_page():
                     st.plotly_chart(fig, use_container_width=True)
                 
                 with col2:
-                    st.markdown("#### 📊 Statistics")
+                    st.markdown("**Statistics**")
                     st.metric("Total Diseases", len(all_diseases))
                     st.metric("Unique Diseases", len(set(all_diseases)))
                     st.metric("Most Common", disease_counts.index[0] if len(disease_counts) > 0 else "N/A")
@@ -2110,11 +2216,35 @@ def show_disease_enrichment_page():
                 label="📥 Download Disease-Enriched Results (CSV)",
                 data=csv_data,
                 file_name=f"disease_enriched_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
+                mime="text/csv",
+                use_container_width=True
             )
     
-    else:
-        st.info("ℹ️ No results available. Please run an analysis first or enter UniProt IDs manually.")
+    # Data sources info - moved to bottom expander
+    st.markdown("---")
+    with st.expander("ℹ️ About Disease Mapping & Data Sources"):
+        st.markdown("""
+        ### Data Sources
+        
+        This tool retrieves disease associations from:
+        
+        - **UniProt Disease Annotations**: Curated disease involvement information from the UniProt database
+        - **Gene-Disease Associations**: Functional links between genes and disease phenotypes
+        - **Clinical Relevance Filtering**: Pre-defined disease categories for targeted analysis
+        
+        ### Disease Categories Available
+        
+        The tool includes pre-defined categories covering major disease areas:
+        - Cancer, Diabetes, Cardiovascular diseases, Neurological disorders, Infectious diseases, and more
+        
+        ### How It Works
+        
+        1. Select a data source (previous analysis results or manual UniProt IDs)
+        2. Optionally filter by disease categories or custom keywords
+        3. Run enrichment to fetch disease annotations from UniProt
+        4. View results with disease associations mapped to each protein
+        5. Download enriched data for further analysis
+        """)
 
 if __name__ == "__main__":
     main()

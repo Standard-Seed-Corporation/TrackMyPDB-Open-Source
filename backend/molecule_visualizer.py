@@ -75,44 +75,23 @@ class MoleculeVisualizer:
     
     def calculate_properties(self, smiles):
         """
-        Calculate comprehensive physicochemical properties
+        Calculate core physicochemical properties (5 essential descriptors)
         
         Returns:
-            dict: Dictionary of molecular properties
+            dict: Dictionary of molecular properties (MW, LogP, HBD, HBA, TPSA)
         """
         try:
             mol = Chem.MolFromSmiles(smiles)
             if mol is None:
                 return None
             
+            # Calculate ONLY the 5 core properties using robust RDKit paths
             properties = {
-                # Basic properties
                 'Molecular_Weight': round(Descriptors.MolWt(mol), 2),
-                'Exact_Mass': round(Descriptors.ExactMolWt(mol), 2),
-                'Formula': rdMolDescriptors.CalcMolFormula(mol),
-                
-                # Lipinski's Rule of Five
-                'LogP': round(Crippen.MolLogP(mol), 2),
+                'LogP': round(Descriptors.MolLogP(mol), 2),
                 'HBD': Lipinski.NumHDonors(mol),
                 'HBA': Lipinski.NumHAcceptors(mol),
-                
-                # Topology
-                'Rotatable_Bonds': Lipinski.NumRotatableBonds(mol),
-                'Aromatic_Rings': Lipinski.NumAromaticRings(mol),
-                'Aliphatic_Rings': Lipinski.NumAliphaticRings(mol),
-                'Heavy_Atoms': Lipinski.HeavyAtomCount(mol),
-                
-                # Surface properties
                 'TPSA': round(Descriptors.TPSA(mol), 2),
-                'Molar_Refractivity': round(Crippen.MolMR(mol), 2),
-                
-                # Drug-likeness
-                'Lipinski_Violations': self._lipinski_violations(mol),
-                'QED': round(Descriptors.qed(mol), 3),
-                
-                # Complexity
-                'Fraction_Csp3': round(Lipinski.FractionCsp3(mol), 3),
-                'Num_Stereocenters': len(Chem.FindMolChiralCenters(mol, includeUnassigned=True)),
             }
             
             return properties
@@ -169,10 +148,11 @@ class ChemicalDrawingTool:
     
     @staticmethod
     def simple_smiles_input():
-        """Simple SMILES input with validation and name resolution"""
-        st.subheader("🖊️ Input or Draw Structure")
+        """Simplified SMILES input - Manual entry or File upload only"""
+        st.subheader("🖊️ Input Structure")
         
-        tab1, tab2, tab3 = st.tabs(["✍️ Manual SMILES", "🔍 Search by Name", "🖼️ Upload MOL/SDF"])
+        # Only 2 tabs: Manual SMILES and File Upload
+        tab1, tab2 = st.tabs(["✍️ Manual SMILES", "📁 File Upload"])
         
         with tab1:
             smiles = st.text_area(
@@ -193,28 +173,44 @@ class ChemicalDrawingTool:
                     return None
         
         with tab2:
-            compound_name = st.text_input("Chemical Name", placeholder="e.g., aspirin, caffeine, ATP")
-            if st.button("🔍 Search") and compound_name:
-                smiles = ChemicalDrawingTool.resolve_name_to_smiles(compound_name)
-                if smiles:
-                    st.success(f"✅ Found: `{smiles}`")
-                    st.session_state['resolved_smiles'] = smiles
-                    return smiles
-                else:
-                    st.error("❌ Could not resolve name to SMILES")
-        
-        with tab3:
-            uploaded_file = st.file_uploader("Upload MOL/SDF file", type=['mol', 'sdf'])
+            st.markdown("Upload a file containing SMILES structures (.smi, .csv, .txt)")
+            uploaded_file = st.file_uploader("Choose file", type=['smi', 'csv', 'txt', 'mol', 'sdf'])
+            
             if uploaded_file:
                 try:
-                    content = uploaded_file.read().decode('utf-8')
-                    mol = Chem.MolFromMolBlock(content)
-                    if mol:
-                        smiles = Chem.MolToSmiles(mol)
-                        st.success(f"✅ Converted to SMILES: `{smiles}`")
-                        return smiles
+                    file_extension = uploaded_file.name.split('.')[-1].lower()
+                    
+                    if file_extension in ['mol', 'sdf']:
+                        # Handle MOL/SDF files
+                        content = uploaded_file.read().decode('utf-8')
+                        mol = Chem.MolFromMolBlock(content)
+                        if mol:
+                            smiles = Chem.MolToSmiles(mol)
+                            st.success(f"✅ Converted to SMILES: `{smiles}`")
+                            return smiles
+                        else:
+                            st.error("❌ Could not parse molecular file")
                     else:
-                        st.error("❌ Could not parse molecular file")
+                        # Handle text-based files (SMILES)
+                        content = uploaded_file.read().decode('utf-8')
+                        # Try to extract first SMILES from file
+                        lines = content.strip().split('\n')
+                        if lines:
+                            # Take first line or first column if CSV
+                            first_line = lines[0]
+                            if ',' in first_line:
+                                smiles = first_line.split(',')[0].strip()
+                            else:
+                                smiles = first_line.strip()
+                            
+                            # Validate
+                            mol = Chem.MolFromSmiles(smiles)
+                            if mol:
+                                st.success(f"✅ Loaded SMILES: `{smiles}`")
+                                st.info(f"📄 File contains {len(lines)} line(s). Showing first structure.")
+                                return smiles
+                            else:
+                                st.error("❌ Invalid SMILES in file")
                 except Exception as e:
                     st.error(f"❌ Error reading file: {e}")
         

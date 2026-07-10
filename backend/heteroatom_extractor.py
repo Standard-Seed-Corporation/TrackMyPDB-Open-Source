@@ -26,6 +26,16 @@ class HeteroatomExtractor:
         self.failed_pdbs = []
         self.all_records = []
         
+        # Common non-drug molecules to exclude (water, ions, buffers, solvents)
+        self.EXCLUDE_CODES = {
+            'HOH', 'WAT', 'H2O', 'DOD', 'D2O',  # Water
+            'SO4', 'PO4', 'NO3', 'CL', 'BR', 'I', 'F',  # Common ions
+            'NA', 'K', 'CA', 'MG', 'ZN', 'FE', 'CU', 'MN',  # Metal ions
+            'ACT', 'EDO', 'PEG', 'GOL', 'MPD', 'DMS', 'BME',  # Common buffers/solvents
+            'PGE', 'P6G', 'PE4', 'PE3', 'PE8', '1PE', 'TRS',  # Polyethylene glycols
+            'MES', 'EPE', 'IMD', 'ACE', 'IOD', 'CIT'  # More common non-drugs
+        }
+        
     def get_pdbs_for_uniprot(self, uniprot):
         """
         Get PDB IDs for given UniProt ID from PDBe best mappings
@@ -301,7 +311,7 @@ class HeteroatomExtractor:
 
     def process_pdb_heteroatoms(self, pdb_id, uniprot_id, lines):
         """
-        Process all heteroatoms from a single PDB
+        Process all heteroatoms from a single PDB (excluding common non-drug molecules)
         
         Args:
             pdb_id (str): PDB ID
@@ -312,24 +322,28 @@ class HeteroatomExtractor:
             list: List of heteroatom records
         """
         codes, het_details = self.extract_all_heteroatoms(lines)
+        
+        # Filter out common non-drug molecules
+        codes = [c for c in codes if c.upper() not in self.EXCLUDE_CODES]
+        
         results = []
 
         if not codes:
             results.append({
                 "UniProt_ID": uniprot_id,
                 "PDB_ID": pdb_id,
-                "Heteroatom_Code": "NO_HETEROATOMS",
+                "Heteroatom_Code": "NO_DRUG_HETEROATOMS",
                 "SMILES": "",
                 "Chemical_Name": "",
                 "Formula": "",
-                "Status": "no_heteroatoms",
+                "Status": "no_drug_heteroatoms_after_filter",
                 "Chains": "",
                 "Residue_Numbers": "",
                 "Atom_Count": 0
             })
             return results
 
-        st.info(f"Processing {len(codes)} heteroatoms from {pdb_id}: {', '.join(codes)}")
+        st.info(f"Processing {len(codes)} drug-like heteroatoms from {pdb_id}: {', '.join(codes)}")
 
         for code in codes:
             # Get detailed info

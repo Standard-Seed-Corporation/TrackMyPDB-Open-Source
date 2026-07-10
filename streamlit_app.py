@@ -374,24 +374,50 @@ def show_footer():
     """, unsafe_allow_html=True)
 
 def main():
-    """Main application function"""
+    """Main application function with enhanced navigation"""
     
     # Header
     st.title("🧬 TrackMyPDB")
     st.markdown("### *Protein Structure Heteroatom Extraction & Molecular Similarity Analysis*")
     
-    # Sidebar navigation
+    # Initialize session state for navigation if not exists
+    if 'nav_page' not in st.session_state:
+        st.session_state['nav_page'] = "🏠 Home"
+    
+    # Sidebar navigation - synced with session state
     st.sidebar.title("Navigation")
+    
+    # Use session state to control selectbox
+    page_options = [
+        "🏠 Home", 
+        "🔍 Heteroatom Extraction", 
+        "🧪 Similarity Analysis", 
+        "🔬 SMILES Database Search", 
+        "📊 Complete Pipeline",
+        "🖼️ Molecule Visualizer", 
+        "🏥 Disease Enrichment"
+    ]
+    
+    # Find index of current page
+    current_index = page_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in page_options else 0
+    
+    # Sidebar selectbox with synchronized state
     page = st.sidebar.selectbox(
         "Choose Analysis Type",
-        ["🏠 Home", "🔍 Heteroatom Extraction", "🧪 Similarity Analysis", 
-         "🔬 SMILES Database Search", "📊 Complete Pipeline",
-         "🖼️ Molecule Visualizer", "🏥 Disease Enrichment"]
+        page_options,
+        index=current_index,
+        key="sidebar_nav"
     )
+    
+    # Update session state when sidebar changes
+    if page != st.session_state['nav_page']:
+        st.session_state['nav_page'] = page
+        st.rerun()
     
     # Add watermark at bottom of sidebar
     show_sidebar_watermark()
     
+    # Route to appropriate page
     if page == "🏠 Home":
         show_home_page()
     elif page == "🔍 Heteroatom Extraction":
@@ -411,38 +437,211 @@ def main():
     show_footer()
 
 def show_home_page():
-    """Display home page with project overview"""
+    """
+    Professional Home Page - Enterprise Bioinformatics Dashboard
+    Refactored for clean typography, functional app launcher, and organized metadata
+    """
     
-    # Version indicator - VISIBLE CONFIRMATION OF LATEST DEPLOYMENT
+    # ============================================================================
+    # HERO SECTION - Clean, professional header
+    # ============================================================================
     st.markdown("""
-    <div style="background-color: #d4edda; padding: 10px; border-radius: 5px; border: 2px solid #28a745; margin-bottom: 20px; text-align: center;">
-        <strong>✅ Version 2.0.1 | Updated: May 15, 2026 | Citation Section Active</strong>
-    </div>
+        <h1 style='color: #2E7D32; font-weight: 700; margin-bottom: 0.5rem; background: transparent;'>
+            TrackMyPDB
+        </h1>
     """, unsafe_allow_html=True)
     
-    # Citation section - PROMINENTLY DISPLAYED AT TOP
-    st.markdown('<div class="section-header">📖 How to Cite This Work</div>', unsafe_allow_html=True)
-    
     st.markdown("""
-    <div style="background-color: #f0f8ff; padding: 20px; border-radius: 10px; border-left: 5px solid #4CAF50; margin: 20px 0;">
-        <h4 style="color: #2c3e50; margin-top: 0;">📚 Citation Required</h4>
-        <p style="color: #34495e; font-size: 16px;">
-        If you use <strong>TrackMyPDB</strong> in your research, publications, or projects, 
-        please cite our work using one of the formats below. Proper attribution helps support 
-        continued development and improvements.
-        </p>
-    </div>
+        <h3 style='color: #4A4A4A; font-weight: 400; margin-top: 0; margin-bottom: 0.5rem; background: transparent;'>
+            Protein Structure Heteroatom Extraction & Molecular Similarity Analysis
+        </h3>
     """, unsafe_allow_html=True)
     
-    # Create tabs for different citation formats
-    tab1, tab2, tab3 = st.tabs(["📄 APA Format", "📚 BibTeX Format", "📝 Plain Text"])
+    # Clean version indicator
+    st.caption("Version 2.0.1 | Updated: May 15, 2026")
     
-    with tab1:
-        st.markdown("**Copy the citation below:**")
-        st.code("""Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis (Version 2.0) [Computer software]. Standard Seed Corporation. https://trackmypdbsscai.streamlit.app/""", language="text")
+    st.markdown("---")
+    
+    # ============================================================================
+    # APPLICATION LAUNCHER GRID - 2x2 functional dashboard
+    # ============================================================================
+    st.markdown("""
+        <h2 style='color: #2E7D32; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; background: transparent;'>
+            Applications
+        </h2>
+    """, unsafe_allow_html=True)
+    
+    # Row 1: Visualizer and Legacy Search
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+            <div style='background: white; padding: 1.5rem; border-radius: 8px; 
+                        border: 1px solid #E0E0E0; height: 200px; margin-bottom: 1rem;'>
+                <h4 style='color: #2E7D32; margin-top: 0; background: transparent;'>
+                    Molecular Visualization & Properties
+                </h4>
+                <p style='color: #666; font-size: 0.95rem; line-height: 1.5;'>
+                    Input SMILES, search by name, or upload files to interactively 
+                    visualize structures and calculate chemical properties.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
         
+        if st.button("Launch Visualizer", key="btn_visualizer", use_container_width=True):
+            st.session_state['nav_page'] = "🖼️ Molecule Visualizer"
+            st.rerun()
+    
+    with col2:
+        st.markdown("""
+            <div style='background: white; padding: 1.5rem; border-radius: 8px; 
+                        border: 1px solid #E0E0E0; height: 200px; margin-bottom: 1rem;'>
+                <h4 style='color: #2E7D32; margin-top: 0; background: transparent;'>
+                    Legacy Search
+                </h4>
+                <p style='color: #666; font-size: 0.95rem; line-height: 1.5;'>
+                    Run the end-to-end processing pipeline—from UniProt ID extraction 
+                    directly down to molecular similarity filtering—in one automated step.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Launch Legacy Search", key="btn_legacy", use_container_width=True):
+            st.session_state['nav_page'] = "📊 Complete Pipeline"
+            st.rerun()
+    
+    # Row 2: Database Search and Disease Analysis
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        st.markdown("""
+            <div style='background: white; padding: 1.5rem; border-radius: 8px; 
+                        border: 1px solid #E0E0E0; height: 200px; margin-bottom: 1rem;'>
+                <h4 style='color: #2E7D32; margin-top: 0; background: transparent;'>
+                    SMILES Database Search
+                </h4>
+                <p style='color: #666; font-size: 0.95rem; line-height: 1.5;'>
+                    Query structures directly against our pre-built PDB ligand database 
+                    using Morgan Fingerprints and Tanimoto metrics without needing a UniProt input.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Launch Database Search", key="btn_db_search", use_container_width=True):
+            st.session_state['nav_page'] = "🔬 SMILES Database Search"
+            st.rerun()
+    
+    with col4:
+        st.markdown("""
+            <div style='background: white; padding: 1.5rem; border-radius: 8px; 
+                        border: 1px solid #E0E0E0; height: 200px; margin-bottom: 1rem;'>
+                <h4 style='color: #2E7D32; margin-top: 0; background: transparent;'>
+                    Disease Enrichment Analysis
+                </h4>
+                <p style='color: #666; font-size: 0.95rem; line-height: 1.5;'>
+                    Map extracted ligands to protein targets and explore functional 
+                    gene-disease associations and UniProt annotations.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Launch Disease Analysis", key="btn_disease", use_container_width=True):
+            st.session_state['nav_page'] = "🏥 Disease Enrichment"
+            st.rerun()
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ============================================================================
+    # TABBED METADATA SECTIONS - Clean organization
+    # ============================================================================
+    tab1, tab2, tab3 = st.tabs(["Overview & Features", "Citation Guide", "Development Team"])
+    
+    # ---- TAB 1: Overview & Features ----
+    with tab1:
+        st.markdown("""
+            <h3 style='color: #2E7D32; background: transparent; margin-top: 1rem;'>
+                About TrackMyPDB
+            </h3>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        TrackMyPDB is a comprehensive bioinformatics pipeline designed for protein structure 
+        analysis, heteroatom extraction, and molecular similarity screening. The platform combines 
+        multiple data sources (RCSB PDB, PDBe, PubChem) with robust cheminformatics algorithms 
+        to enable target identification and ligand discovery.
+        """)
+        
+        st.markdown("""
+            <h4 style='color: #2E7D32; background: transparent; margin-top: 1.5rem;'>
+                Key Pipeline Workflows
+            </h4>
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **Heteroatom Extraction Tool**
+            - Extract ALL heteroatoms from PDB structures
+            - Multi-source data fetching (RCSB PDB, PubChem)
+            - Real-time progress tracking
+            - Comprehensive ligand database with SMILES
+            - Robust error handling and retry logic
+            """)
+            
+            st.markdown("""
+            **Molecular Similarity Analyzer**
+            - Morgan fingerprint generation
+            - Tanimoto similarity scoring
+            - Interactive visualizations
+            - Statistical analysis reports
+            - Ranked similarity results
+            """)
+        
+        with col2:
+            st.markdown("""
+            **SMILES Database Search**
+            - Fast pre-built database queries
+            - No UniProt ID required
+            - Direct PDB ligand matching
+            - Top-N results ranking
+            - Co-crystallized ligand identification
+            """)
+            
+            st.markdown("""
+            **Disease Enrichment Analysis**
+            - Protein-ligand target mapping
+            - Gene-disease association analysis
+            - UniProt functional annotations
+            - Disease category enrichment
+            - Interactive filtering and export
+            """)
+    
+    # ---- TAB 2: Citation Guide ----
     with tab2:
-        st.markdown("**Copy the BibTeX entry below:**")
+        st.markdown("""
+            <h3 style='color: #2E7D32; background: transparent; margin-top: 1rem;'>
+                📚 Citation Required
+            </h3>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        If you use **TrackMyPDB** in your research, publications, or projects, please cite 
+        our work using one of the formats below. Proper attribution helps support continued 
+        development and improvements.
+        """)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # APA Format
+        st.markdown("**APA Format:**")
+        st.code("""Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis (Version 2.0) [Computer software]. Standard Seed Corporation. https://trackmypdbsscai.streamlit.app/""", 
+                language="text")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # BibTeX Format
+        st.markdown("**BibTeX Format:**")
         st.code("""@software{trackmypdb2025,
   author = {Sharif, Suliman and Gamage, Anu and Kotawalagedara, Kalana and Sha, Sakeer and Bodun, Damilola},
   title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction and Molecular Similarity Analysis},
@@ -451,160 +650,67 @@ def show_home_page():
   organization = {Standard Seed Corporation},
   url = {https://trackmypdbsscai.streamlit.app/}
 }""", language="bibtex")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Acknowledgments
+        st.markdown("**Please also acknowledge:**")
+        st.markdown("""
+        - RCSB PDB (Protein Data Bank)
+        - PDBe (Protein Data Bank in Europe)
+        - PubChem (National Center for Biotechnology Information)
+        - RDKit Cheminformatics Toolkit
+        """)
     
+    # ---- TAB 3: Development Team ----
     with tab3:
-        st.markdown("**Copy the citation below:**")
-        st.code("""Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/""", language="text")
-    
-    st.success("""
-    ✅ **Please also acknowledge:** RCSB PDB, PDBe, PubChem, and RDKit Cheminformatics Toolkit in your methods section.
-    """)
-    
-    # Developer credits
-    st.markdown("""
-    <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 5px solid #ffc107; margin: 20px 0;">
-        <h4 style="color: #856404; margin-top: 0;">👥 Development Team</h4>
-        <p style="color: #856404; margin-bottom: 5px;"><strong>Project Supervisor:</strong> Suliman Sharif</p>
-        <p style="color: #856404; margin-bottom: 5px;"><strong>Lead Engineer:</strong> Anu Gamage</p>
-        <p style="color: #856404; margin-bottom: 0;"><strong>Associate Engineers:</strong> Kalana Kotawalagedara, Sakeer Sha, Damilola Bodun</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Project Overview section
-    st.markdown('<div class="section-header">🎯 Project Overview</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
         st.markdown("""
-        #### 🔬 Heteroatom Extraction Tool
-        - **Purpose**: Extract ALL heteroatoms from PDB structures
-        - **Input**: UniProt protein identifiers
-        - **Output**: Comprehensive ligand database with SMILES
-        - **Features**: Multi-source data fetching, robust error handling
-        """)
+            <h3 style='color: #2E7D32; background: transparent; margin-top: 1rem;'>
+                Development Team
+            </h3>
+        """, unsafe_allow_html=True)
         
+        # Corporate backing
         st.markdown("""
-        #### 📊 Key Capabilities
-        - ✅ **Comprehensive extraction**: Processes ALL heteroatoms
-        - ✅ **Multi-source data**: RCSB PDB and PubChem APIs
-        - ✅ **Progress tracking**: Real-time status updates
-        - ✅ **Error handling**: Graceful API failure management
-        """)
-    
-    with col2:
-        st.markdown("""
-        #### 🧪 Molecular Similarity Analyzer
-        - **Purpose**: Find molecules similar to target compound
-        - **Input**: Target SMILES structure
-        - **Output**: Ranked similarity results
-        - **Method**: Morgan fingerprints + Tanimoto similarity
-        """)
+        <div style='text-align: center; padding: 1.5rem; background: #f8f9fa; 
+                    border-radius: 8px; margin: 1rem 0;'>
+            <h4 style='color: #2E7D32; margin-top: 0; background: transparent;'>
+                Developed and released by Standard Seed Corporation
+            </h4>
+        </div>
+        """, unsafe_allow_html=True)
         
-        st.markdown("""
-        #### 🎯 Analysis Features
-        - ✅ **Morgan fingerprints**: Industry-standard representations
-        - ✅ **Tanimoto similarity**: Robust similarity metrics
-        - ✅ **Rich visualizations**: Interactive plots and charts
-        - ✅ **Statistical reports**: Comprehensive analysis
-        """)
-    
-    # New feature highlight
-    st.markdown('<div class="section-header">🆕 SMILES Database Search</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        #### 🔬 Novel Search Feature
-        - **Purpose**: Search pre-built PDB ligands database
-        - **Input**: SMILES structure only (no UniProt needed)
-        - **Output**: Top matching PDB IDs with similarity scores
-        - **Database**: pdb_ligands_trackmypdb_open_source.csv
-        """)
-    
-    with col2:
-        st.markdown("""
-        #### ⚡ Search Benefits
-        - ✅ **Fast search**: No extraction needed
-        - ✅ **Direct matching**: Query against all PDB ligands
-        - ✅ **Top results**: Best co-crystallized ligands
-        - ✅ **PDB annotations**: Direct PDB ID mapping
-        """)
-    
-    # Workflow diagram
-    st.markdown('<div class="section-header">🔄 Workflows</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        **Standard Pipeline:**
-        ```
-        UniProt IDs 
-           ↓
-        PDB Structures 
-           ↓
-        Heteroatom Extraction 
-           ↓
-        SMILES Database
-           ↓
-        Target SMILES 
-           ↓
-        Similarity Analysis 
-           ↓
-        Results CSV
-        ```
-        """)
-    
-    with col2:
-        st.markdown("""
-        **SMILES Database Search:**
-        ```
-        Input SMILES
-           ↓
-        Morgan Fingerprints
-           ↓
-        PDB Ligands Database
-           ↓
-        Tanimoto Similarity
-           ↓
-        Top PDB IDs
-           ↓
-        Annotated Results
-        ```
-        """)
-    
-    # Quick start
-    st.markdown('<div class="section-header">🚀 Quick Start</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        **Option 1: Full Pipeline**
-        1. Navigate to "🔍 Heteroatom Extraction"
-        2. Enter your UniProt IDs
-        3. Run extraction to build database
-        4. Switch to "🧪 Similarity Analysis"
-        5. Input your target SMILES
-        6. Analyze molecular similarities
-        7. Download results as CSV
-        """)
-    
-    with col2:
-        st.markdown("""
-        **Option 2: Quick SMILES Search** ⚡
-        1. Navigate to "🔬 SMILES Database Search"
-        2. Enter your SMILES structure(s)
-        3. Set search parameters
-        4. Click "Search Database"
-        5. View top matching PDB IDs
-        6. Download results
-        7. Analyze co-crystallized ligands
-        """)
+        # Display SSC logo if available
+        if os.path.exists("ssc.png"):
+            col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+            with col_logo2:
+                st.image("ssc.png", width=200, caption="Standard Seed Corporation")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Team roles in clean layout
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **Project Supervisor**
+            - Suliman Sharif
+            
+            **Lead Engineer**
+            - Anu Gamage
+            """)
+        
+        with col2:
+            st.markdown("""
+            **Associate Engineers**
+            - Kalana Kotawalagedara
+            - Sakeer Sha
+            - Damilola Bodun
+            """)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.caption("Licensed under MIT License - Open Source Project")
 
 def show_extraction_page():
     """Display heteroatom extraction interface"""

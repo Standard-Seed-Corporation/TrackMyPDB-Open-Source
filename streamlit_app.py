@@ -394,8 +394,9 @@ def main():
         "🧪 Similarity Analysis", 
         "🔬 SMILES Database Search", 
         "� Legacy Search",
-        "🖼️ Molecule Visualizer", 
-        "🏥 Disease Enrichment"
+        "🖼️ Molecule Visualizer",
+        "🏥 Disease Enrichment",
+        "🤖 AI Assistant"
     ]
     
     # Find index of current page
@@ -432,9 +433,17 @@ def main():
         show_molecule_visualizer_page()
     elif page == "🏥 Disease Enrichment":
         show_disease_enrichment_page()
-    
+    elif page == "🤖 AI Assistant":
+        show_ai_assistant_page()
+
     # Show footer
     show_footer()
+
+
+def show_ai_assistant_page():
+    """AI Assistant - Claude-powered chat backed by the TrackMyPDB MCP server."""
+    from agent.streamlit_chat import render
+    render()
 
 def show_home_page():
     """

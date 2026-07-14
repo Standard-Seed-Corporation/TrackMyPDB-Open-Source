@@ -9,4 +9,9 @@ seaborn>=0.12.0
 plotly>=5.15.0
 Pillow>=10.0.0
 # Updated: 2026-05-15 - Citation section prominently displayed
-# Updated: 2026-07-07 - Added Pillow, fixed libXrender.so.1 error with matplotlib Agg backend 
+# Updated: 2026-07-07 - Added Pillow, fixed libXrender.so.1 error with matplotlib Agg backend
+
+# --- Agentic + MCP layer ---
+mcp>=1.2.0
+anthropic>=0.39.0
+python-dotenv>=1.0.0 

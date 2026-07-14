@@ -24,7 +24,59 @@ sys.modules.setdefault("streamlit", _st_shim)
 from backend.heteroatom_extractor import HeteroatomExtractor  # noqa: E402
 from backend.similarity_analyzer import MolecularSimilarityAnalyzer  # noqa: E402
 
+import csv  # noqa: E402
+import functools  # noqa: E402
+import os  # noqa: E402
+
 import pandas as pd  # noqa: E402
+
+
+# --- Local ligand database fallback -------------------------------------------
+# The repo ships pdb_ligands_trackmypdb_open_source.csv (PDB_ID, Heteroatom_Code,
+# SMILES, Chemical_Name, Formula, ...). When the online SMILES sources
+# (RCSB / PDBe / PubChem) are slow or blocked, we fall back to this local file so
+# extraction still returns usable SMILES for known ligand codes.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LIGAND_CSV = os.path.join(_REPO_ROOT, "pdb_ligands_trackmypdb_open_source.csv")
+
+
+@functools.lru_cache(maxsize=1)
+def _local_ligand_map() -> dict:
+    """Map Heteroatom_Code -> {SMILES, Chemical_Name, Formula} from the local CSV."""
+    mapping = {}
+    try:
+        with open(_LIGAND_CSV, newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                code = (row.get("Heteroatom_Code") or "").strip()
+                smiles = (row.get("SMILES") or "").strip()
+                if code and smiles and code not in mapping:
+                    mapping[code] = {
+                        "SMILES": smiles,
+                        "Chemical_Name": (row.get("Chemical_Name") or "").strip(),
+                        "Formula": (row.get("Formula") or "").strip(),
+                    }
+    except FileNotFoundError:
+        pass
+    return mapping
+
+
+def _fill_missing_smiles_from_local_db(records: list) -> int:
+    """For records with no SMILES, backfill from the local ligand DB. Returns count."""
+    local = _local_ligand_map()
+    filled = 0
+    for r in records:
+        if r.get("SMILES"):
+            continue
+        hit = local.get((r.get("Heteroatom_Code") or "").strip())
+        if hit:
+            r["SMILES"] = hit["SMILES"]
+            if not r.get("Chemical_Name"):
+                r["Chemical_Name"] = hit["Chemical_Name"]
+            if not r.get("Formula"):
+                r["Formula"] = hit["Formula"]
+            r["Status"] = "local_db"
+            filled += 1
+    return filled
 
 
 # ------------------------------------------------------------------ tools -----
@@ -62,6 +114,9 @@ def extract_heteroatoms(uniprot_ids, max_pdbs_per_uniprot: int = 5,
                 continue
             records.extend(ex.process_pdb_heteroatoms(pdb, up, lines))
 
+    # Backfill any SMILES the online sources failed to return, using the local DB.
+    filled_from_local = _fill_missing_smiles_from_local_db(records)
+
     if drug_like_only:
         real = [r for r in records
                 if r.get("Heteroatom_Code") not in ("NO_DRUG_HETEROATOMS", "NO_HETEROATOMS")]
@@ -73,6 +128,7 @@ def extract_heteroatoms(uniprot_ids, max_pdbs_per_uniprot: int = 5,
         "pdbs_per_uniprot": pdbs_per_uniprot,
         "record_count": len(records),
         "records_with_smiles": len(with_smiles),
+        "records_filled_from_local_db": filled_from_local,
         "heteroatoms": records,
     }
 

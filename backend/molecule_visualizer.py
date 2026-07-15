@@ -100,6 +100,40 @@ class MoleculeVisualizer:
             st.error(f"Error calculating properties: {e}")
             return None
     
+    def get_smiles_from_name(self, compound_name):
+        """
+        Fetch SMILES from compound name using PubChem API
+        
+        Args:
+            compound_name (str): Name of the compound
+            
+        Returns:
+            str: SMILES string or None if not found
+        """
+        try:
+            import urllib.parse
+            # URL encode the compound name
+            encoded_name = urllib.parse.quote(compound_name)
+            
+            # Search PubChem by name
+            url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{encoded_name}/property/IsomericSMILES,CanonicalSMILES/JSON"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                props = data['PropertyTable']['Properties'][0]
+                # Try multiple possible SMILES field names
+                smiles = (props.get('IsomericSMILES') or 
+                         props.get('CanonicalSMILES') or 
+                         props.get('SMILES') or
+                         props.get('ConnectivitySMILES'))
+                return smiles
+            else:
+                return None
+        except Exception as e:
+            # Don't show error in bare mode, just return None
+            return None
+    
     def _lipinski_violations(self, mol):
         """Count Lipinski's Rule of Five violations"""
         violations = 0

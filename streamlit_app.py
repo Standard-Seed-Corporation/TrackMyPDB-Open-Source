@@ -374,67 +374,32 @@ def show_footer():
     """, unsafe_allow_html=True)
 
 def main():
-    """Main application function with enhanced navigation"""
+    """Main application function with unified interface"""
     
     # Header
     st.title("🧬 TrackMyPDB")
     st.markdown("### *Protein Structure Heteroatom Extraction & Molecular Similarity Analysis*")
     
-    # Initialize session state for navigation if not exists
-    if 'nav_page' not in st.session_state:
-        st.session_state['nav_page'] = "🏠 Home"
+    # Sidebar with quick info and tools
+    st.sidebar.title("🎛️ Quick Access")
     
-    # Sidebar navigation - synced with session state
-    st.sidebar.title("Navigation")
+    # Add quick navigation within the unified page
+    st.sidebar.markdown("""
+    **Unified Workflow:**
+    1. � Legacy Search (Extract + Similarity)
+    2. 🔬 Database Search
+    3. 🖼️ Molecule Visualizer
+    4. 🏥 Disease Enrichment
+    5. 🤖 AI Assistant
+    """)
     
-    # Use session state to control selectbox
-    page_options = [
-        "🏠 Home", 
-        "🔍 Heteroatom Extraction", 
-        "🧪 Similarity Analysis", 
-        "🔬 SMILES Database Search", 
-        "� Legacy Search",
-        "🖼️ Molecule Visualizer",
-        "🏥 Disease Enrichment",
-        "🤖 AI Assistant"
-    ]
-    
-    # Find index of current page
-    current_index = page_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in page_options else 0
-    
-    # Sidebar selectbox with synchronized state
-    page = st.sidebar.selectbox(
-        "Choose Analysis Type",
-        page_options,
-        index=current_index,
-        key="sidebar_nav"
-    )
-    
-    # Update session state when sidebar changes
-    if page != st.session_state['nav_page']:
-        st.session_state['nav_page'] = page
-        st.rerun()
+    st.sidebar.markdown("---")
     
     # Add watermark at bottom of sidebar
     show_sidebar_watermark()
     
-    # Route to appropriate page
-    if page == "🏠 Home":
-        show_home_page()
-    elif page == "🔍 Heteroatom Extraction":
-        show_extraction_page()
-    elif page == "🧪 Similarity Analysis":
-        show_similarity_page()
-    elif page == "🔬 SMILES Database Search":
-        show_smiles_database_search()
-    elif page == "� Legacy Search":
-        show_complete_pipeline()
-    elif page == "🖼️ Molecule Visualizer":
-        show_molecule_visualizer_page()
-    elif page == "🏥 Disease Enrichment":
-        show_disease_enrichment_page()
-    elif page == "🤖 AI Assistant":
-        show_ai_assistant_page()
+    # Show unified dashboard
+    show_unified_dashboard()
 
     # Show footer
     show_footer()
@@ -444,6 +409,620 @@ def show_ai_assistant_page():
     """AI Assistant - Claude-powered chat backed by the TrackMyPDB MCP server."""
     from agent.streamlit_chat import render
     render()
+
+def show_unified_dashboard():
+    """
+    Unified Dashboard - All TrackMyPDB functionalities in one interface
+    """
+    
+    # Welcome section with quick stats
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); 
+                    padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;'>
+            <h2 style='color: #2E7D32; margin: 0; background: transparent;'>
+                🧬 TrackMyPDB Unified Dashboard
+            </h2>
+            <p style='color: #4A4A4A; margin: 0.5rem 0 0 0;'>
+                Complete protein structure analysis workflow in one place
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.metric("Version", "2.0.1", delta="Unified")
+    
+    with col3:
+        if RDKIT_AVAILABLE:
+            st.metric("RDKit", "✅ Active", delta="Full")
+        else:
+            st.metric("RDKit", "⚠️ Limited", delta="Simple")
+    
+    # Create tabs for organized workflow
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Legacy Search",
+        "🔬 Database Search",
+        "🖼️ Molecule Visualizer",
+        "🤖 AI Assistant"
+    ])
+    
+    # ========== TAB 1: LEGACY SEARCH (Combined Heteroatom Extraction + Similarity) ==========
+    with tab1:
+        st.markdown("### 📊 Legacy Search: Complete Pipeline")
+        st.markdown("**Step 1:** Extract heteroatoms → **Step 2:** Analyze similarity → **Step 3:** Protein enrichment → **Step 4:** Disease annotation")
+        
+        st.markdown("---")
+        st.markdown("#### Step 1️⃣: Heteroatom Extraction")
+        
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            uniprot_input = st.text_area(
+                "UniProt IDs",
+                placeholder="Enter UniProt IDs (one per line or comma-separated)\nExample: Q9UNQ0, P37231, P06276",
+                height=120,
+                help="Enter protein UniProt identifiers",
+                key="legacy_uniprot_input"
+            )
+            
+            if uniprot_input:
+                uniprot_ids = []
+                for line in uniprot_input.strip().split('\n'):
+                    for up_id in line.split(','):
+                        up_id = up_id.strip()
+                        if up_id:
+                            uniprot_ids.append(up_id)
+                st.info(f"📊 Found {len(uniprot_ids)} UniProt IDs: {', '.join(uniprot_ids)}")
+        
+        with col2:
+            st.markdown("#### Quick Actions")
+            
+            if os.path.exists("heteroatom_results.csv"):
+                st.success("✅ Previous results found")
+                if st.button("📥 Load Previous", key="legacy_load_het"):
+                    df = pd.read_csv("heteroatom_results.csv")
+                    st.session_state['heteroatom_data'] = df
+                    st.success("Results loaded!")
+                    st.rerun()
+            
+            if st.button("🗑️ Clear Results", key="legacy_clear_het"):
+                if 'heteroatom_data' in st.session_state:
+                    del st.session_state['heteroatom_data']
+                if 'similarity_results' in st.session_state:
+                    del st.session_state['similarity_results']
+                if os.path.exists("heteroatom_results.csv"):
+                    os.remove("heteroatom_results.csv")
+                st.success("Cleared!")
+                st.rerun()
+        
+        if st.button("🚀 Start Heteroatom Extraction", type="primary", key="legacy_extract_btn", use_container_width=True):
+            if not uniprot_input:
+                st.error("❌ Please enter at least one UniProt ID")
+            else:
+                extractor = HeteroatomExtractor()
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                def update_progress(progress, message):
+                    progress_bar.progress(progress)
+                    status_text.text(message)
+                
+                try:
+                    with st.spinner("Extracting heteroatoms..."):
+                        df = extractor.extract_heteroatoms(uniprot_ids, progress_callback=update_progress)
+                    
+                    st.session_state['heteroatom_data'] = df
+                    df.to_csv("heteroatom_results.csv", index=False)
+                    
+                    progress_bar.empty()
+                    status_text.empty()
+                    st.success("✅ Heteroatom extraction completed!")
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    progress_bar.empty()
+                    status_text.empty()
+        
+        # Display heteroatom results
+        if 'heteroatom_data' in st.session_state:
+            df = st.session_state['heteroatom_data']
+            
+            st.markdown("---")
+            st.markdown("#### 📊 Extraction Results")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Records", len(df))
+            with col2:
+                st.metric("PDB Structures", df['PDB_ID'].nunique())
+            with col3:
+                st.metric("Unique Heteroatoms", df['Heteroatom_Code'].nunique())
+            with col4:
+                st.metric("With SMILES", len(df[df['SMILES'] != '']))
+            
+            st.dataframe(df.head(20), use_container_width=True)
+            
+            csv = df.to_csv(index=False)
+            st.download_button(
+                "📥 Download Extraction Results (CSV)",
+                data=csv,
+                file_name=f"heteroatom_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                key="legacy_download_het"
+            )
+            
+            # ========== STEP 2: SIMILARITY ANALYSIS ==========
+            st.markdown("---")
+            st.markdown("#### Step 2️⃣: Molecular Similarity Analysis")
+            st.info("💡 Now analyze similarity using the extracted heteroatoms as the database")
+            
+            # Query input
+            query_smiles = st.text_input(
+                "Query SMILES",
+                placeholder="Enter SMILES string for similarity search",
+                help="Enter a SMILES notation to find similar molecules in extracted data",
+                key="legacy_query_smiles"
+            )
+            
+            # Advanced parameters in columns
+            st.markdown("##### ⚙️ Similarity Parameters")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                min_similarity = st.slider(
+                    "Min Similarity",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.01,
+                    step=0.01,
+                    help="Minimum Tanimoto similarity threshold",
+                    key="legacy_min_sim"
+                )
+            
+            with col2:
+                top_n = st.number_input(
+                    "Top N Results",
+                    min_value=1,
+                    max_value=1000,
+                    value=50,
+                    help="Number of top similar compounds to return",
+                    key="legacy_top_n"
+                )
+            
+            with col3:
+                radius = st.number_input(
+                    "Morgan Radius",
+                    min_value=1,
+                    max_value=5,
+                    value=2,
+                    help="Radius for Morgan fingerprint generation",
+                    key="legacy_radius"
+                )
+            
+            with col4:
+                n_bits = st.selectbox(
+                    "Number of Bits",
+                    options=[512, 1024, 2048, 4096],
+                    index=2,
+                    help="Fingerprint bit vector length",
+                    key="legacy_n_bits"
+                )
+            
+            if st.button("🔬 Run Similarity Analysis", type="primary", key="legacy_sim_btn", use_container_width=True):
+                if not query_smiles:
+                    st.error("❌ Please enter a query SMILES string")
+                else:
+                    try:
+                        # Initialize analyzer with custom parameters
+                        analyzer = MolecularSimilarityAnalyzer(radius=radius, n_bits=n_bits)
+                        
+                        with st.spinner("Analyzing molecular similarity..."):
+                            results_df = analyzer.analyze_similarity(
+                                target_smiles=query_smiles,
+                                heteroatom_df=df,
+                                top_n=top_n,
+                                min_similarity=min_similarity
+                            )
+                        
+                        if len(results_df) > 0:
+                            st.session_state['similarity_results'] = results_df
+                            st.success(f"✅ Found {len(results_df)} similar compounds!")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ No compounds found above the similarity threshold")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+            
+            # Display similarity results
+            if 'similarity_results' in st.session_state:
+                results_df = st.session_state['similarity_results']
+                
+                st.markdown("---")
+                st.markdown("#### 📊 Similarity Results")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Matches Found", len(results_df))
+                with col2:
+                    if 'Tanimoto_Similarity' in results_df.columns:
+                        avg_sim = results_df['Tanimoto_Similarity'].mean() if len(results_df) > 0 else 0
+                        st.metric("Avg Similarity", f"{avg_sim:.3f}")
+                with col3:
+                    if 'Tanimoto_Similarity' in results_df.columns:
+                        max_sim = results_df['Tanimoto_Similarity'].max() if len(results_df) > 0 else 0
+                        st.metric("Max Similarity", f"{max_sim:.3f}")
+                
+                # Step 3: Protein enrichment option
+                if 'PDB_ID' in results_df.columns and 'UniProt_IDs' not in results_df.columns:
+                    st.markdown("---")
+                    st.markdown("#### Step 3️⃣: Protein Acronym Search")
+                    col_enrich1, col_enrich2 = st.columns([3, 1])
+                    
+                    with col_enrich1:
+                        st.info("💡 Enrich results with UniProt IDs and protein names from PDB structures")
+                    
+                    with col_enrich2:
+                        if st.button("🔬 Enrich with Protein Info", key="legacy_sim_enrich_btn"):
+                            with st.spinner("Fetching protein information from PDB..."):
+                                enriched_results = enrich_results_with_protein_info(results_df.copy())
+                                st.session_state['similarity_results'] = enriched_results
+                                st.success("✅ Results enriched with protein information!")
+                                st.rerun()
+                
+                # Step 4: Disease annotation option (only if protein enrichment is done)
+                if 'UniProt_IDs' in results_df.columns and 'Disease_Associations' not in results_df.columns:
+                    st.markdown("---")
+                    st.markdown("#### Step 4️⃣: Disease Annotation")
+                    col_disease1, col_disease2 = st.columns([3, 1])
+                    
+                    with col_disease1:
+                        st.info("🏥 Enrich results with disease associations from UniProt")
+                    
+                    with col_disease2:
+                        if st.button("🏥 Add Disease Info", key="legacy_disease_btn"):
+                            with st.spinner("Fetching disease associations from UniProt..."):
+                                annotator = DiseaseAnnotator()
+                                
+                                progress_bar = st.progress(0)
+                                status_text = st.empty()
+                                
+                                def update_progress(progress, message):
+                                    progress_bar.progress(progress)
+                                    status_text.text(message)
+                                
+                                enriched_results = annotator.enrich_results_with_diseases(
+                                    results_df.copy(),
+                                    progress_callback=update_progress
+                                )
+                                
+                                progress_bar.empty()
+                                status_text.empty()
+                                
+                                st.session_state['similarity_results'] = enriched_results
+                                st.success("✅ Results enriched with disease information!")
+                                st.rerun()
+                
+                st.dataframe(results_df, use_container_width=True)
+                
+                csv = results_df.to_csv(index=False)
+                st.download_button(
+                    "📥 Download Similarity Results (CSV)",
+                    data=csv,
+                    file_name=f"similarity_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    key="legacy_download_sim"
+                )
+    
+    # ========== TAB 2: DATABASE SEARCH ==========
+    with tab2:
+        st.markdown("### 🔬 SMILES Database Search")
+        st.markdown("Search pre-built database of PDB ligands using SMILES input.")
+        
+        # Query input
+        db_query_smiles = st.text_input(
+            "Query SMILES",
+            placeholder="Enter SMILES string to search database",
+            key="db_query_smiles_input"
+        )
+        
+        # Search parameters in columns
+        st.markdown("#### ⚙️ Search Parameters")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            db_top_n = st.number_input(
+                "Top N Results",
+                min_value=1,
+                max_value=1000,
+                value=50,
+                help="Number of top matches to return",
+                key="db_top_n_input"
+            )
+        
+        with col2:
+            db_min_sim = st.slider(
+                "Min Similarity",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.01,
+                step=0.01,
+                help="Minimum similarity threshold",
+                key="db_min_sim_input"
+            )
+        
+        with col3:
+            db_radius = st.number_input(
+                "Morgan Radius",
+                min_value=1,
+                max_value=5,
+                value=2,
+                help="Radius for Morgan fingerprints",
+                key="db_radius_input"
+            )
+        
+        with col4:
+            db_n_bits = st.selectbox(
+                "Number of Bits",
+                options=[512, 1024, 2048, 4096],
+                index=2,
+                help="Fingerprint bit vector length",
+                key="db_n_bits_input"
+            )
+        
+        if st.button("🔍 Search Database", type="primary", key="db_search_btn", use_container_width=True):
+            if not db_query_smiles:
+                st.error("❌ Please enter a SMILES string")
+            else:
+                # Check for database file
+                db_file = "pdb_ligands_trackmypdb_open_source.csv"
+                if not os.path.exists(db_file):
+                    st.error(f"❌ Database file not found: {db_file}")
+                else:
+                    try:
+                        # Initialize analyzer with custom parameters
+                        analyzer = MolecularSimilarityAnalyzer(radius=db_radius, n_bits=db_n_bits)
+                        
+                        with st.spinner("Searching database..."):
+                            db_df = pd.read_csv(db_file)
+                            # Use analyze_similarity method with the database
+                            search_results = analyzer.analyze_similarity(
+                                target_smiles=db_query_smiles,
+                                heteroatom_df=db_df,
+                                top_n=db_top_n,
+                                min_similarity=db_min_sim
+                            )
+                        
+                        if len(search_results) > 0:
+                            st.session_state['db_search_results'] = search_results
+                            st.success(f"✅ Found {len(search_results)} matches!")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ No matches found in database")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+        
+        # Display database search results
+        if 'db_search_results' in st.session_state:
+            search_results = st.session_state['db_search_results']
+            
+            st.markdown("---")
+            st.markdown("#### 📊 Database Search Results")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Matches Found", len(search_results))
+            with col2:
+                if 'Tanimoto_Similarity' in search_results.columns:
+                    avg_score = search_results['Tanimoto_Similarity'].mean() if len(search_results) > 0 else 0
+                    st.metric("Avg Similarity", f"{avg_score:.3f}")
+            
+            # Protein enrichment option
+            if 'PDB_ID' in search_results.columns and 'UniProt_IDs' not in search_results.columns:
+                col_enrich1, col_enrich2 = st.columns([3, 1])
+                
+                with col_enrich1:
+                    st.info("💡 Enrich results with UniProt IDs and protein names from PDB structures")
+                
+                with col_enrich2:
+                    if st.button("🔬 Enrich with Protein Info", key="db_enrich_btn"):
+                        with st.spinner("Fetching protein information from PDB..."):
+                            enriched_results = enrich_results_with_protein_info(search_results.copy())
+                            st.session_state['db_search_results'] = enriched_results
+                            st.success("✅ Results enriched with protein information!")
+                            st.rerun()
+            
+            # Disease enrichment option (only if protein enrichment is done)
+            if 'UniProt_IDs' in search_results.columns and 'Disease_Associations' not in search_results.columns:
+                col_disease1, col_disease2 = st.columns([3, 1])
+                
+                with col_disease1:
+                    st.info("🏥 Enrich results with disease associations from UniProt")
+                
+                with col_disease2:
+                    if st.button("🏥 Add Disease Info", key="db_disease_btn"):
+                        with st.spinner("Fetching disease associations from UniProt..."):
+                            annotator = DiseaseAnnotator()
+                            
+                            progress_bar = st.progress(0)
+                            status_text = st.empty()
+                            
+                            def update_progress(progress, message):
+                                progress_bar.progress(progress)
+                                status_text.text(message)
+                            
+                            enriched_results = annotator.enrich_results_with_diseases(
+                                search_results.copy(),
+                                progress_callback=update_progress
+                            )
+                            
+                            progress_bar.empty()
+                            status_text.empty()
+                            
+                            st.session_state['db_search_results'] = enriched_results
+                            st.success("✅ Results enriched with disease information!")
+                            st.rerun()
+            
+            st.dataframe(search_results, use_container_width=True)
+            
+            csv = search_results.to_csv(index=False)
+            st.download_button(
+                "📥 Download Search Results (CSV)",
+                data=csv,
+                file_name=f"db_search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                key="db_download_btn"
+            )
+    
+    # ========== TAB 3: MOLECULE VISUALIZER ==========
+    with tab3:
+        st.markdown("### ️ Molecule Visualizer & Properties")
+        st.markdown("Visualize molecular structures and calculate properties.")
+        
+        visualizer = MoleculeVisualizer()
+        
+        input_method = st.radio(
+            "Input Method:",
+            ["SMILES String", "Molecule Name", "Upload File"],
+            horizontal=True,
+            key="unified_viz_input_method"
+        )
+        
+        molecule_input = None
+        
+        if input_method == "SMILES String":
+            molecule_input = st.text_input(
+                "Enter SMILES",
+                placeholder="e.g., CCO for ethanol",
+                key="unified_viz_smiles"
+            )
+        
+        elif input_method == "Molecule Name":
+            molecule_name = st.text_input(
+                "Enter Molecule Name",
+                placeholder="e.g., aspirin",
+                key="unified_viz_name"
+            )
+            
+            if molecule_name and st.button("🔍 Search", key="unified_viz_search_name"):
+                try:
+                    smiles = visualizer.get_smiles_from_name(molecule_name)
+                    if smiles:
+                        molecule_input = smiles
+                        st.success(f"✅ Found: {smiles}")
+                    else:
+                        st.error("❌ Molecule not found")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+        
+        elif input_method == "Upload File":
+            uploaded_file = st.file_uploader(
+                "Upload molecule file",
+                type=['mol', 'sdf', 'pdb'],
+                key="unified_viz_upload"
+            )
+            
+            if uploaded_file:
+                try:
+                    content = uploaded_file.read().decode('utf-8')
+                    molecule_input = content
+                    st.success("✅ File loaded")
+                except Exception as e:
+                    st.error(f"❌ Error reading file: {str(e)}")
+        
+        if molecule_input and st.button("🎨 Visualize", type="primary", key="unified_viz_btn", use_container_width=True):
+            try:
+                # Generate visualization
+                img = visualizer.smiles_to_image(molecule_input)
+                
+                if img:
+                    col1, col2 = st.columns([1, 1])
+                    
+                    with col1:
+                        st.image(img, caption="Molecular Structure", use_container_width=True)
+                    
+                    with col2:
+                        # Calculate properties
+                        props = visualizer.calculate_properties(molecule_input)
+                        
+                        if props:
+                            st.markdown("#### 📊 Molecular Properties")
+                            for key, value in props.items():
+                                st.metric(key, value)
+                        else:
+                            st.error("❌ Could not calculate properties")
+                else:
+                    st.error("❌ Could not generate visualization")
+                    
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+    
+    # ========== TAB 4: AI ASSISTANT ==========
+    with tab4:
+        st.markdown("### 🤖 AI Assistant")
+        st.markdown("Chat with Claude AI powered by TrackMyPDB MCP server.")
+        
+        try:
+            from agent.streamlit_chat import render
+            render()
+        except ModuleNotFoundError as e:
+            module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
+            st.error(f"❌ Missing required module: `{module_name}`")
+            st.info("💡 **How to fix:**")
+            st.code("pip install -r requirements-agent.txt", language="bash")
+            st.markdown("""
+            This will install:
+            - `anthropic` - Claude AI SDK
+            - `mcp` - Model Context Protocol
+            - `python-dotenv` - Environment variable management
+            """)
+        except Exception as e:
+            st.error(f"❌ AI Assistant unavailable: {str(e)}")
+            st.info("""
+            **Setup Instructions:**
+            
+            1. **Install dependencies:**
+               ```bash
+               pip install -r requirements-agent.txt
+               ```
+            
+            2. **Configure API Key** (choose one method):
+               
+               **Option A: Environment Variable**
+               - Copy `.env.example` to `.env`
+               - Add your Anthropic API key: `ANTHROPIC_API_KEY=sk-ant-...`
+               
+               **Option B: Streamlit Secrets**
+               - Create `.streamlit/secrets.toml`
+               - Add: `ANTHROPIC_API_KEY = "sk-ant-..."`
+               
+               **Option C: In-App Entry**
+               - Once dependencies are installed, you can enter the API key in the sidebar
+            
+            3. **Get API Key:**
+               - Visit https://console.anthropic.com
+               - Sign up/login and generate an API key
+            """)
+    
+    # Footer with citation info
+    st.markdown("---")
+    with st.expander("📚 Citation & License Information"):
+        st.markdown("""
+        **If you use TrackMyPDB, please cite:**
+        
+        Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). 
+        TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms 
+        from protein structures and finding molecularly similar compounds using 
+        fingerprint-based similarity analysis (Version 2.0). Standard Seed Corporation.
+        
+        📄 **License:** MIT License - Open Source Project
+        """)
+
+
 
 def show_home_page():
     """

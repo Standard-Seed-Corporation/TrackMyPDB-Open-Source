@@ -1,0 +1,15 @@
+UniProt_ID,PDB_ID,Heteroatom_Code,SMILES,Chemical_Name,Formula,Status,Chains,Residue_Numbers,Atom_Count
+P51812,4D9T,0JG,Cc1ccc(cc1)c2c(n(c3c2c(ncn3)N)C=CCO)CC(C#N)C(=O)OC,"methyl (2S)-3-{4-amino-7-[(1E)-3-hydroxyprop-1-en-1-yl]-5-(4-methylphenyl)-7H-pyrrolo[2,3-d]pyrimidin-6-yl}-2-cyanopropanoate",C21 H21 N5 O3,rcsb_success,A,900,29
+P51812,4D9U,0JH,Cc1ccc(cc1)c2c(n(c3c2c(ncn3)N)CCCO)CC(C#N)C(=O)OC(C)(C)C,"tert-butyl (2S)-3-[4-amino-7-(3-hydroxypropyl)-5-(4-methylphenyl)-7H-pyrrolo[2,3-d]pyrimidin-6-yl]-2-cyanopropanoate",C24 H29 N5 O3,rcsb_success,A,900,32
+P51812,4JG6,1LB,c1cc2c(cc1CC(C#N)C(=O)N)cn[nH]2,(2S)-2-cyano-3-(1H-indazol-5-yl)propanamide,C11 H10 N4 O,rcsb_success,A,801,25
+P51812,4JG7,1LC,c1cc(cc(c1)C(=O)c2c[nH]c3c2cccn3)CC(C#N)C(=O)N,"(2R)-2-cyano-3-[3-(1H-pyrrolo[2,3-b]pyridin-3-ylcarbonyl)phenyl]propanamide",C18 H14 N4 O2,rcsb_success,A,801,36
+P51812,4JG8,1LE,CC(C)(CO)NC(=O)C(Cc1ccc2c(c1)c(n[nH]2)c3cc(c(c(c3)OC)OC)OC)C#N,"(2S)-2-cyano-N-(1-hydroxy-2-methylpropan-2-yl)-3-[3-(3,4,5-trimethoxyphenyl)-1H-indazol-5-yl]propanamide",C24 H28 N4 O5,rcsb_success,A,801,60
+P51812,4NUS,2NK,CN1CCN(CC1)c2ccc(cc2)c3ccncc3c4cc(c(c(c4)F)O)F,"2,6-difluoro-4-{4-[4-(4-methylpiperazin-1-yl)phenyl]pyridin-3-yl}phenol",C22 H21 F2 N3 O,rcsb_success,A,1001,28
+P51812,4NW5,2NR,COc1cccc(c1c2cccc3c2oc(n3)Nc4cc(c(c(c4)OC)OC)OC)F,"7-(2-fluoro-6-methoxyphenyl)-N-(3,4,5-trimethoxyphenyl)-1,3-benzoxazol-2-amine",C23 H21 F N2 O5,rcsb_success,A,1001,31
+P51812,4NW6,2NS,COc1cc(cc(c1OC)OC)Nc2nc3cccc(c3o2)c4cccc5c4[nH]cn5,"7-(1H-benzimidazol-7-yl)-N-(3,4,5-trimethoxyphenyl)-1,3-benzoxazol-2-amine",C23 H20 N4 O4,rcsb_success,A,1001,31
+P51812,5D9K,584,CC1C(=O)N(c2cnc(nc2N1CCC(C)C)Nc3cc(c(c(c3)F)O)F)C,"(7R)-2-[(3,5-difluoro-4-hydroxyphenyl)amino]-5,7-dimethyl-8-(3-methylbutyl)-7,8-dihydropteridin-6(5H)-one",C19 H23 F2 N5 O2,rcsb_success,"A, B",401,28
+P51812,5D9L,583,c1cc(ccc1c2c[nH]nc2c3ccc(cc3)O)O,"4,4'-(1H-pyrazole-3,4-diyl)diphenol",C15 H12 N2 O2,rcsb_success,A,1001,19
+P51812,7OPO,ANP,c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(NP(=O)(O)O)O)O)O)N,PHOSPHOAMINOPHOSPHONIC ACID-ADENYLATE ESTER,C10 H17 N6 O12 P3,rcsb_success,"A, C, E, G, I, K",401,31
+P51812,8EQ5,QCT,CC1C(C(C(C(O1)OC2=C(Oc3cc(cc(c3C2=O)O)O)c4ccc(c(c4)O)O)O)O)O,"2-(3,4-dihydroxyphenyl)-5,7-dihydroxy-4-oxo-4H-chromen-3-yl 6-deoxy-alpha-L-mannopyranoside",C21 H20 O11,rcsb_success,A,401,32
+P51812,8R58,QCT,CC1C(C(C(C(O1)OC2=C(Oc3cc(cc(c3C2=O)O)O)c4ccc(c(c4)O)O)O)O)O,"2-(3,4-dihydroxyphenyl)-5,7-dihydroxy-4-oxo-4H-chromen-3-yl 6-deoxy-alpha-L-mannopyranoside",C21 H20 O11,rcsb_success,A,401,32
+P51812,8XEY,NO_DRUG_HETEROATOMS,,,,no_drug_heteroatoms_after_filter,,,0

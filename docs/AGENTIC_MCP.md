@@ -1,67 +1,75 @@
-# TrackMyPDB - Agentic Layer & MCP Server
+# AI assistant and MCP server
 
-This feature turns TrackMyPDB from a click-through Streamlit app into something
-users can **talk to**. It has two parts that share one set of tools:
+TrackMyPDB can be driven in plain language. Two parts share one set of tools:
 
-1. **MCP server** (`mcp_server/`) - exposes the TrackMyPDB pipeline as
-   [Model Context Protocol](https://modelcontextprotocol.io) tools over stdio.
-   Any MCP client (Claude Desktop, Cursor, ...) can use it.
-2. **Agentic chat tab** (`agent/`) - a new "AI Assistant" page in the Streamlit
-   app. It uses Claude, which calls the very same MCP server to answer.
+1. **MCP server** (`mcp_server/`): exposes the `trackmypdb` library as
+   [Model Context Protocol](https://modelcontextprotocol.io) tools over stdio, for any
+   MCP client (Claude Desktop, Cursor, ...).
+2. **AI Assistant page** (`agent/`): a chat page in the web app. Claude answers by
+   calling the same MCP server.
 
 ```
-                       +---------------------------+
-   Streamlit "AI       |   agent/mcp_agent.py      |
-   Assistant" tab  --> |   (Claude tool-use loop)  | --+
-                       +---------------------------+   |
-                                                       |  stdio (MCP)
-   Claude Desktop / Cursor  ----------------------------+--> mcp_server/server.py
-                                                              |
-                                                       mcp_server/core.py
-                                                              |
-                                       backend/heteroatom_extractor.py
-                                       backend/similarity_analyzer.py
+Streamlit "AI Assistant" page ──> agent/mcp_agent.py (Claude tool-use loop) ──┐
+                                                                              │ stdio (MCP)
+Claude Desktop / Cursor ──────────────────────────────────────────────────────┴─> mcp_server/server.py
+                                                                                        │
+                                                                                  trackmypdb library
 ```
 
-## Tools exposed
+## Tools
 
 | Tool | What it does |
 |------|--------------|
-| `list_pdbs_for_uniprot` | PDB IDs for a UniProt accession |
+| `list_pdbs_for_uniprot` | PDB IDs for a UniProt accession, best first |
 | `extract_heteroatoms` | Ligands + SMILES from a protein's PDB structures |
-| `analyze_similarity` | Rank ligand records vs a target SMILES (Tanimoto) |
-| `run_pipeline` | Extract + rank in one call (preferred) |
-| `compare_smiles` | Tanimoto similarity between two molecules |
+| `analyze_similarity` | Rank ligand records against a target SMILES (Tanimoto) |
+| `run_pipeline` | Extract + rank in one call |
+| `search_ligand_database` | Similarity search in the bundled offline ligand database |
+| `compare_smiles` | Tanimoto similarity of two molecules |
 
-## Run the MCP server on its own
+Tool results are capped at 200 records to keep them within a model's context window.
 
-```bat
-python -m mcp_server.server
+## Use with Claude Desktop
+
+Install with `pip install -e ".[agent]"`, then add this to Claude Desktop's
+`claude_desktop_config.json` (on Windows: `%APPDATA%\Claude\claude_desktop_config.json`),
+replacing the path with the absolute path of your clone:
+
+```json
+{
+  "mcpServers": {
+    "trackmypdb": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "env": { "PYTHONPATH": "C:\\path\\to\\TrackMyPDB-Open-Source" }
+    }
+  }
+}
 ```
 
-It speaks JSON-RPC over stdio, so you normally launch it from an MCP client
-rather than by hand. To use it in **Claude Desktop**, copy
-`claude_desktop_config.example.json` into your Claude Desktop config
-(`%APPDATA%\Claude\claude_desktop_config.json`), fix the `cwd` path, and restart
-Claude Desktop. TrackMyPDB tools then appear in the chat.
+Restart Claude Desktop; the TrackMyPDB tools then appear in the chat. Use the full
+path to the Python executable of your virtual environment as `command` if `python`
+is not the right interpreter.
 
-## Run the in-app chat
+Check the connection without an API key or internet access:
 
-```bat
-pip install -r requirements.txt
-set ANTHROPIC_API_KEY=sk-ant-...
+```bash
+python scripts/mcp_healthcheck.py
+```
+
+## In-app assistant
+
+```bash
+pip install -e ".[app,agent]"
 streamlit run streamlit_app.py
 ```
 
-Open the app, choose **AI Assistant** in the sidebar, and chat. (You can also
-paste the key into the sidebar box instead of setting the env var.)
+Open **AI Assistant** and paste an Anthropic API key in the sidebar (it is kept only in
+your browser session). Alternatively put it in a `.env` file (see `.env.example`).
 
-## Design notes
+**Shared keys on public deployments.** A key in the deployment's secrets or environment
+is used for every visitor *only* if `TRACKMYPDB_ALLOW_SHARED_KEY=1` is also set. Leave
+this off on public deployments, or every visitor can spend your credits.
 
-* `mcp_server/st_shim.py` lets the Streamlit-coupled backend run head-less in
-  the MCP process by turning every `st.*` call into a no-op. This keeps stdout
-  clean for the MCP protocol.
-* Extraction hits public APIs (RCSB, PDBe, PubChem), so tools cap the number of
-  PDB structures per UniProt ID (`max_pdbs_per_uniprot`, default 5).
-* The model name is configurable via `ANTHROPIC_MODEL`; set it to whatever your
-  account supports.
+Other settings: `ANTHROPIC_MODEL` (default `claude-sonnet-5-5`) and
+`TRACKMYPDB_MAX_TOOL_ROUNDS` (default 8, the maximum rounds of tool calls per question).

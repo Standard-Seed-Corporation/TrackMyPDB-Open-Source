@@ -1,7 +1,29 @@
 # Secrets
 .env
+.streamlit/secrets.toml
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+build/
+dist/
 .pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Generated results (never commit user output)
+*_results*.csv
+TrackMyPDB_*.csv
+
+# Paper build output
+paper/paper.pdf
+paper/jats/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

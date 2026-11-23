@@ -1,284 +1,162 @@
-# TrackMyPDB - Streamlit Application
+# TrackMyPDB
 
-**A comprehensive bioinformatics pipeline for extracting heteroatoms from protein structures and finding molecularly similar compounds using fingerprint-based similarity analysis.**
+<!-- TODO: replace <org> with the GitHub organisation once the repository URL is final. -->
+[![tests](https://github.com/<org>/TrackMyPDB-Open-Source/actions/workflows/tests.yml/badge.svg)](https://github.com/<org>/TrackMyPDB-Open-Source/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Web app](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://trackmypdbsscai.streamlit.app/)
 
-© 2025 [Standard Seed Corporation](https://www.linkedin.com/company/standard-seed-corporation/?viewAsMember=true). This is an open-source project developed and released by Standard Seed Corporation under the MIT License. All rights reserved.
+**Find the ligands that have been co-crystallised with your proteins in the Protein Data
+Bank, and rank them by chemical similarity to a molecule of interest.**
 
+Given UniProt accessions, TrackMyPDB:
 
-## 🎯 Overview
+1. maps them to PDB entries (PDBe best-structure mapping, best structures first);
+2. downloads each structure (mmCIF, falling back to PDB format) and extracts its bound
+   chemical components, dropping water, ions, buffers, cryo-protectants and modified
+   residues;
+3. resolves each component to SMILES, name, formula and InChIKey from the wwPDB Chemical
+   Component Dictionary (with an offline fallback database);
+4. ranks the ligands by Tanimoto similarity of Morgan fingerprints (RDKit) to one or
+   more query molecules;
+5. optionally annotates hits with UniProt accessions, protein names and UniProt disease
+   involvement.
 
-TrackMyPDB is a user-friendly Streamlit web application that combines two powerful components:
+It is one Python library with four interfaces: a **Python API**, a **command-line
+tool**, a **Streamlit web app** and an **MCP server** for AI assistants.
 
-1. **Heteroatom Extraction Tool**: Systematically extracts all heteroatoms from PDB structures associated with UniProt proteins
-2. **Molecular Similarity Analyzer**: Finds ligands most similar to a target molecule using Morgan fingerprints and Tanimoto similarity
+## Installation
 
-## 🚀 Quick Start
+Python 3.10 or newer is required.
 
-### Web Application
-- https://trackmypdbsscai.streamlit.app/
-
-
-### Launch using local machine
-### Prerequisites
-- Python 3.7+
-- Internet connection for API calls
-- Windows OS (optimized for Windows environment)
-
-### Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd TrackMyPDB
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Launch the application**:
-   ```bash
-   streamlit run streamlit_app.py
-   ```
-
-4. **Open your browser** to `http://localhost:8501`
-
-### Basic Usage
-
-1. **Navigate** to the web interface
-2. **Choose analysis type**:
-   - 🔍 Heteroatom Extraction
-   - 🧪 Similarity Analysis  
-   - 📊 Complete Pipeline
-3. **Input your data**:
-   - UniProt IDs (e.g., Q9UNQ0, P37231, P06276)
-   - Target SMILES structure
-4. **Run analysis** and download CSV results
-
-## 📋 Application Features
-
-### 🔍 Heteroatom Extraction
-- **Input**: UniProt protein identifiers
-- **Process**: Fetches PDB structures, extracts heteroatoms, retrieves SMILES
-- **Output**: Comprehensive CSV with chemical information
-- **APIs**: RCSB PDB, PubChem integration
-- **Features**: Progress tracking, error handling, result caching
-
-### 🧪 Molecular Similarity Analysis
-- **Input**: Target SMILES structure
-- **Process**: Morgan fingerprint computation, Tanimoto similarity calculation
-- **Output**: Ranked similarity results with interactive visualizations
-- **Features**: Configurable parameters, real-time analysis, comprehensive reports
-
-### 📊 Complete Pipeline
-- **Workflow**: End-to-end processing from UniProt IDs to similarity results
-- **Integration**: Automatic heteroatom extraction followed by similarity analysis
-- **Output**: Both heteroatom database and similarity results
-
-## 🏗️ Project Structure
-
-```
-TrackMyPDB/
-├── streamlit_app.py              # Main Streamlit application
-├── requirements.txt              # Python dependencies
-├── backend/
-│   ├── __init__.py              # Package initialization
-│   ├── heteroatom_extractor.py  # Heteroatom extraction logic
-│   └── similarity_analyzer.py   # Similarity analysis logic
-└── README.md                    # This file
-```
-
-## 🛠️ Technical Details
-
-### Dependencies
-- **Streamlit**: Web application framework
-- **RDKit**: Cheminformatics and molecular similarity
-- **Pandas**: Data manipulation and analysis
-- **Plotly**: Interactive visualizations
-- **Requests**: API communications
-- **NumPy**: Numerical computations
-
-### API Integration
-- **PDBe REST API**: PDB structure mappings
-- **RCSB PDB API**: Chemical component data
-- **PubChem API**: Backup molecular data
-
-### Molecular Analysis
-- **Morgan Fingerprints**: Circular molecular fingerprints (radius=2, 2048 bits)
-- **Tanimoto Similarity**: Industry-standard similarity metric (0-1 scale)
-- **Interactive Visualizations**: Distribution plots, similarity rankings, statistical analysis
-
-## 🎮 User Interface
-
-### Apple-Inspired Design
-- **Modern UI**: Clean, minimalist design inspired by Apple Design principles
-- **Responsive Layout**: Optimized for different screen sizes
-- **Interactive Elements**: Smooth animations and hover effects
-- **Intuitive Navigation**: Clear section organization and progress indicators
-
-### Key Features
-- **Real-time Progress**: Progress bars and status updates
-- **Error Handling**: Graceful error messages and troubleshooting
-- **Data Export**: CSV download functionality with timestamps
-- **Result Caching**: Session state management for efficiency
-
-## 📊 Expected Results
-
-### Typical Output
-- **Heteroatoms**: ~1000-5000 heteroatoms per 10 UniProt proteins
-- **SMILES Success**: ~60-80% success rate for SMILES retrieval
-- **Similar Ligands**: ~50-200 similar compounds per target (similarity > 0.2)
-- **Processing Time**: 30-60 minutes for complete pipeline
-
-### File Outputs
-- `heteroatom_results_YYYYMMDD_HHMMSS.csv`: Complete heteroatom extraction results
-- `similarity_results_YYYYMMDD_HHMMSS.csv`: Molecular similarity analysis results
-
-## 🔧 Configuration Options
-
-### Heteroatom Extraction
-- **UniProt IDs**: Multiple input formats (comma-separated, line-separated)
-- **Result Caching**: Previous results loading and management
-- **API Settings**: Automatic retry logic and rate limiting
-
-### Similarity Analysis
-- **Fingerprint Parameters**: 
-  - Morgan radius: 1, 2, 3 (default: 2)
-  - Fingerprint bits: 1024, 2048, 4096 (default: 2048)
-- **Analysis Parameters**:
-  - Top N results: 10-100 (default: 50)
-  - Minimum similarity: 0.0-1.0 (default: 0.2)
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-#### "Module not found" errors
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# For RDKit installation issues on Windows
-conda install -c conda-forge rdkit
+git clone <repository-url>
+cd TrackMyPDB-Open-Source
+pip install -e .                 # library + command-line tool
+pip install -e ".[app]"          # + web app
+pip install -e ".[app,agent]"    # + AI assistant / MCP server
 ```
 
-#### "Invalid SMILES" warnings
-- Verify SMILES syntax using online validators
-- Check for special characters or formatting issues
-- Example valid SMILES: `CCO` (ethanol), `CC(=O)O` (acetic acid)
+RDKit is installed from PyPI automatically. With conda you can instead use
+`conda install -c conda-forge rdkit` before installing TrackMyPDB.
 
-#### Slow performance
-- Reduce number of UniProt IDs for testing
-- Use higher minimum similarity threshold
-- Check internet connection stability
+Windows users can double-click `install.bat` (creates a virtual environment) and then
+`run.bat` to start the web app.
 
-#### API timeout errors
-- Wait a few minutes and retry
-- Check if external APIs (RCSB, PubChem) are accessible
-- Reduce batch size for large datasets
+## Usage
 
-## 💡 Use Cases
+### Web app
 
-### Drug Discovery
-- **Lead Optimization**: Find similar compounds to known drugs
-- **Scaffold Hopping**: Identify alternative molecular frameworks
-- **Target Analysis**: Understand ligand binding preferences
-
-### Chemical Biology
-- **Cofactor Analysis**: Study enzyme cofactor preferences
-- **Binding Site Analysis**: Characterize pocket properties
-- **Cross-reactivity Prediction**: Assess off-target binding
-
-### Academic Research
-- **Structural Biology**: Build custom screening libraries
-- **Comparative Analysis**: Study protein-ligand interactions
-- **Database Construction**: Create specialized molecular databases
-
-## 🤝 Contributing
-
-### Development Guidelines
-- Follow PEP 8 style guidelines
-- Add comprehensive error handling
-- Include progress indicators for long operations
-- Document all functions and classes
-- Test with various input formats
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-**Open Source Project** - Free to use, modify, and distribute under the MIT License terms.
-
-Please respect API terms of service and rate limits when using this application.
-
-## � How to Cite
-
-If you use TrackMyPDB in your research or project, please cite it as follows:
-
-### APA Format
-```
-Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). 
-TrackMyPDB: A comprehensive bioinformatics pipeline for extracting heteroatoms from protein 
-structures and finding molecularly similar compounds using fingerprint-based similarity analysis 
-(Version 2.0) [Computer software]. Standard Seed Corporation. 
-https://trackmypdbsscai.streamlit.app/
+```bash
+streamlit run streamlit_app.py
 ```
 
-### BibTeX Format
-```bibtex
-@software{trackmypdb2025,
-  author = {Sharif, Suliman and Gamage, Anu and Kotawalagedara, Kalana and 
-            Sha, Sakeer and Bodun, Damilola},
-  title = {TrackMyPDB: A Comprehensive Bioinformatics Pipeline for Heteroatom Extraction 
-           and Molecular Similarity Analysis},
-  year = {2025},
-  version = {2.0},
-  organization = {Standard Seed Corporation},
-  url = {https://trackmypdbsscai.streamlit.app/},
-  note = {Open-source software for protein structure analysis and molecular similarity}
-}
+Then open <http://localhost:8501>. A hosted version is available at
+<https://trackmypdbsscai.streamlit.app/>.
+
+| Page | What it does |
+|------|--------------|
+| Database Search | Search the bundled ligand database with one or more SMILES (offline, fast) |
+| Full Pipeline | UniProt IDs + query SMILES → ranked ligands in one step |
+| Ligand Extraction | Ligand inventory of your proteins' PDB structures |
+| Similarity Ranking | Rank extracted or uploaded ligands against a query |
+| Molecule Viewer | 2D depiction and drug-likeness descriptors |
+| Disease Enrichment | UniProt disease involvement of the protein targets |
+| AI Assistant | Ask questions in plain language (needs an Anthropic API key) |
+
+### Command line
+
+```bash
+# Ligands bound in the 5 best structures of PPAR-gamma
+trackmypdb extract P37231 --max-structures 5 -o ppar_ligands.csv
+
+# Rank them against a query molecule (rosiglitazone)
+trackmypdb similarity "CN(CCOc1ccc(CC2SC(=O)NC2=O)cc1)c1ccccn1" ppar_ligands.csv --top 10
+
+# Both steps at once
+trackmypdb pipeline P37231 --smiles "CN(CCOc1ccc(CC2SC(=O)NC2=O)cc1)c1ccccn1" -o hits.csv
+
+# Search the bundled ligand database (no network needed)
+trackmypdb search "CC(=O)Oc1ccccc1C(=O)O" --min-similarity 0.4
+
+# Similarity of two molecules
+trackmypdb compare "CC(=O)Oc1ccccc1C(=O)O" "Oc1ccccc1C(=O)O"
 ```
 
-### Plain Text Format
+Run `trackmypdb <command> --help` for all options.
+
+### Python
+
+```python
+from trackmypdb import HeteroatomExtractor, rank_by_similarity
+from trackmypdb.annotations import add_protein_info
+
+result = HeteroatomExtractor().extract(["P37231"], max_structures=5)
+print(result.summary)                  # counts, failed downloads, invalid IDs
+ligands = result.records               # pandas DataFrame, one row per protein/entry/ligand
+
+hits = rank_by_similarity("CN(CCOc1ccc(CC2SC(=O)NC2=O)cc1)c1ccccn1", ligands, top_n=10)
+hits = add_protein_info(hits)          # adds UniProt_IDs and Protein_Names
 ```
-Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). 
-TrackMyPDB v2.0 - Protein Structure Heteroatom Extraction & Molecular Similarity Analysis. 
-Standard Seed Corporation. Available at: https://trackmypdbsscai.streamlit.app/
+
+### AI assistant and MCP server
+
+See [docs/AGENTIC_MCP.md](docs/AGENTIC_MCP.md). The MCP server (`python -m mcp_server.server`)
+works with any MCP client, such as Claude Desktop.
+
+## Output columns
+
+| Column | Meaning |
+|--------|---------|
+| `UniProt_ID`, `PDB_ID` | Protein accession and PDB entry |
+| `Heteroatom_Code` | Chemical Component Dictionary code of the ligand |
+| `Chemical_Name`, `SMILES`, `Formula`, `InChIKey` | Ligand chemistry |
+| `Component_Type` | CCD component type (e.g. `NON-POLYMER`) |
+| `Source` | Where the chemistry came from: `rcsb`, `rcsb_sdf`, `local_db` or `not_found` |
+| `Chains`, `Residue_Numbers`, `Copies`, `Atom_Count` | Where and how often it occurs in the entry |
+| `Tanimoto_Similarity` | Similarity to the query (0–1), in ranking results |
+
+## Testing
+
+```bash
+pip install -e ".[test]"
+pytest                    # offline suite, uses recorded API responses
+pytest --run-network      # also checks the live RCSB / PDBe / UniProt APIs
 ```
 
-### DOI (if applicable)
-If you have obtained a DOI for your work that uses TrackMyPDB, please consider citing both the software and your own publication.
+Tests run automatically on GitHub Actions for Linux, Windows and macOS.
 
-**Note**: Please also acknowledge the underlying databases and tools used by TrackMyPDB:
-- RCSB Protein Data Bank (RCSB PDB)
-- Protein Data Bank in Europe (PDBe)
-- PubChem Database
-- RDKit Cheminformatics Toolkit
+## Limitations
 
-## �🙏 Acknowledgments
+- Extraction depends on public web services (PDBe, RCSB PDB, UniProt); large
+  proteins can map to hundreds of structures, so use `--max-structures` for quick looks.
+- Similarity is 2D fingerprint similarity. It does not consider binding mode,
+  stereochemistry (by default) or activity.
+- Disease annotations are limited to the curated UniProtKB/Swiss-Prot "Involvement in
+  disease" section.
 
-- **RCSB PDB**: Protein structure data
-- **PDBe**: Structure mapping services  
-- **PubChem**: Chemical information database
-- **RDKit**: Cheminformatics toolkit
-- **Streamlit**: Web application framework
+## Contributing and support
 
----
+Bug reports, questions and pull requests are welcome. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md), and use
+GitHub issues for support.
 
-## 👨‍💻 Developers
+## Citation
 
-- Project Supervisor/Senior Engineer: [Sul sharif](https://www.linkedin.com/in/sulimansharif/)
-- Lead Engineer: [Anu Gamage](https://www.linkedin.com/in/anu-gamage-62192b201/?originalSubdomain=lk)
-- Associate Engineers: [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/), [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/), [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/)
+If you use TrackMyPDB, please cite it using the metadata in [CITATION.cff](CITATION.cff)
+(GitHub's "Cite this repository" button gives APA and BibTeX). Please also acknowledge
+the RCSB PDB, PDBe, UniProt and RDKit.
 
-## 📞 Support
+## License
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Verify input data format
-3. Test with provided examples
-4. Review browser console for errors
-5. Contact the developers through LinkedIn
+MIT, see [LICENSE](LICENSE). Please respect the terms of use of the RCSB PDB, PDBe and
+UniProt APIs.
 
-**Happy molecular hunting!** 🧬🔍
+## Authors
+
+Developed and released by Standard Seed Corporation.
+
+- Project supervisor: [Suliman Sharif](https://www.linkedin.com/in/sulimansharif/)
+- Lead engineer: [Anu Gamage](https://www.linkedin.com/in/anu-gamage-62192b201/)
+- Associate engineers: [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/),
+  [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/),
+  [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/)

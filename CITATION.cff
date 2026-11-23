@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use TrackMyPDB, please cite it using the metadata below."
+title: "TrackMyPDB"
+abstract: >-
+  Extract ligands from the PDB structures of UniProt proteins and rank them by
+  fingerprint similarity to query molecules; available as a Python library,
+  command-line tool, Streamlit web app and MCP server.
+type: software
+version: 2.1.0
+date-released: 2026-11-23  # TODO: set when the v2.1.0 release is tagged
+license: MIT
+url: "https://trackmypdbsscai.streamlit.app/"
+# repository-code: "https://github.com/<org>/TrackMyPDB-Open-Source"  # TODO
+authors:
+  # TODO: add ORCIDs (orcid: "https://orcid.org/0000-...") and affiliations.
+  - given-names: Suliman
+    family-names: Sharif
+    affiliation: Standard Seed Corporation
+  - given-names: Anu
+    family-names: Gamage
+    affiliation: Standard Seed Corporation
+  - given-names: Kalana
+    family-names: Kotawalagedara
+    affiliation: Standard Seed Corporation
+  - given-names: Sakeer
+    family-names: Sha
+    affiliation: Standard Seed Corporation
+  - given-names: Damilola
+    family-names: Bodun
+    affiliation: Standard Seed Corporation
+keywords:
+  - cheminformatics
+  - Protein Data Bank
+  - ligands
+  - molecular similarity
+  - drug discovery
+# After JOSS acceptance, add a "preferred-citation" block pointing to the paper.

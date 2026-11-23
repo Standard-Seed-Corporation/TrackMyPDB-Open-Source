@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "trackmypdb": {
-      "command": "python",
-      "args": ["-m", "mcp_server.server"],
-      "cwd": "D:\\SKRJULY\\TrackMyPDB2\\repo"
-    }
-  }
-}

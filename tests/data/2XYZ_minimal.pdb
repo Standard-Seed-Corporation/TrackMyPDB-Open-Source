@@ -1,0 +1,7 @@
+HEADER    TEST STRUCTURE
+ATOM      1  N   ALA A   1       1.000   2.000   3.000  1.00 10.00           N
+HETATM    2  C1  BRL A 501       1.000   2.000   3.000  1.00 10.00           C
+HETATM    3  N1  GSH A 601       1.000   2.000   3.000  1.00 10.00           N
+HETATM    4  CA  GSH A 601       1.000   2.000   3.000  1.00 10.00           C
+HETATM    5  O   HOH A 701       1.000   2.000   3.000  1.00 10.00           O
+END

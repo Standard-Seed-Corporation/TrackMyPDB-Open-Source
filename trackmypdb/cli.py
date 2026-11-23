@@ -7,6 +7,7 @@ Examples::
     trackmypdb similarity "CC(=O)Oc1ccccc1C(=O)O" ligands.csv --top 20
     trackmypdb search "CC(=O)Oc1ccccc1C(=O)O" --min-similarity 0.4
     trackmypdb pipeline P37231 --smiles "CC(=O)Oc1ccccc1C(=O)O" -o hits.csv
+    trackmypdb substructure "c1ccc2ncncc2c1" --top 20
     trackmypdb compare CCO CCN
 """
 
@@ -68,6 +69,14 @@ def build_parser() -> argparse.ArgumentParser:
     _fp_args(p)
     p.add_argument("-o", "--output")
 
+    p = sub.add_parser("substructure",
+                       help="find ligands containing a scaffold (SMILES or SMARTS)")
+    p.add_argument("pattern")
+    p.add_argument("ligands_csv", nargs="?",
+                   help="ligand CSV to search (default: the bundled ligand database)")
+    p.add_argument("--top", type=int, default=50, help="max matches (0 = all)")
+    p.add_argument("-o", "--output")
+
     p = sub.add_parser("pipeline", help="extract + rank in one step")
     p.add_argument("uniprot_ids", nargs="+")
     p.add_argument("--smiles", required=True)
@@ -107,6 +116,14 @@ def main(argv: list[str] | None = None) -> int:
     from .similarity import InvalidSmilesError, compare_smiles, rank_by_similarity
 
     try:
+        if args.command == "substructure":
+            from .ligand_db import load_ligand_db
+            from .substructure import substructure_search
+            ligands = (pd.read_csv(args.ligands_csv, dtype=str, keep_default_na=False)
+                       if args.ligands_csv else load_ligand_db(with_smiles_only=True))
+            _write(substructure_search(args.pattern, ligands, max_results=args.top or None),
+                   args.output)
+            return 0
         if args.command == "compare":
             print(f"{compare_smiles(args.smiles_a, args.smiles_b, args.radius, args.bits):.4f}")
             return 0

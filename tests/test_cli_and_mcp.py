@@ -33,6 +33,11 @@ def test_cli_search_and_compare(tmp_path, capsys):
     assert hits.iloc[0]["Heteroatom_Code"] == "GSH"
     assert hits.iloc[0]["Tanimoto_Similarity"] == pytest.approx(1.0)
 
+    sub_out = tmp_path / "sub.csv"
+    assert cli.main(["substructure", "c1ccc2ncncc2c1", "--top", "5", "-o", str(sub_out)]) == 0
+    assert "Heavy_Atoms" in pd.read_csv(sub_out).columns
+    assert cli.main(["substructure", "[not valid"]) == 2
+
     assert cli.main(["compare", "CCO", "CCO"]) == 0
     assert capsys.readouterr().out.strip() == "1.0000"
     assert cli.main(["compare", "CCO", "nonsense("]) == 2

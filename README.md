@@ -21,6 +21,9 @@ Given UniProt accessions, TrackMyPDB:
 5. optionally annotates hits with UniProt accessions, protein names and UniProt disease
    involvement.
 
+It also supports substructure (scaffold) search, highlights the atoms each hit shares
+with the query, and shows any hit in its 3D binding site.
+
 It is one Python library with four interfaces: a **Python API**, a **command-line
 tool**, a **Streamlit web app** and an **MCP server** for AI assistants.
 
@@ -55,7 +58,7 @@ Then open <http://localhost:8501>. A hosted version is available at
 
 | Page | What it does |
 |------|--------------|
-| Database Search | Search the bundled ligand database with one or more SMILES (offline, fast) |
+| Database Search | Similarity or substructure (scaffold) search in the bundled ligand database (offline, fast) |
 | Full Pipeline | UniProt IDs + query SMILES → ranked ligands in one step |
 | Ligand Extraction | Ligand inventory of your proteins' PDB structures |
 | Similarity Ranking | Rank extracted or uploaded ligands against a query |
@@ -74,6 +77,9 @@ trackmypdb similarity "CN(CCOc1ccc(CC2SC(=O)NC2=O)cc1)c1ccccn1" ppar_ligands.csv
 
 # Both steps at once
 trackmypdb pipeline P37231 --smiles "CN(CCOc1ccc(CC2SC(=O)NC2=O)cc1)c1ccccn1" -o hits.csv
+
+# Every ligand containing a quinazoline scaffold (SMILES or SMARTS)
+trackmypdb substructure "c1ccc2ncncc2c1" --top 20
 
 # Search the bundled ligand database (no network needed)
 trackmypdb search "CC(=O)Oc1ccccc1C(=O)O" --min-similarity 0.4

@@ -54,6 +54,15 @@ def ligand_database(radius: int, n_bits: int):
     return db, fingerprints(db["SMILES"].tolist(), radius, n_bits)
 
 
+@st.cache_resource(show_spinner="Preparing substructure search...")
+def ligand_mols() -> list:
+    """Parsed RDKit molecules for the bundled database (same row order as
+    ``ligand_database``), cached for substructure search."""
+    from trackmypdb.similarity import mol_from_smiles
+    db, _ = ligand_database(2, 2048)
+    return [mol_from_smiles(s) for s in db["SMILES"]]
+
+
 @st.cache_data(max_entries=1000)
 def smiles_is_valid(smiles: str) -> bool:
     from trackmypdb.similarity import mol_from_smiles
@@ -186,14 +195,13 @@ def protein_info_step(hits: pd.DataFrame, state_key: str) -> pd.DataFrame | None
     """
     from trackmypdb.annotations import add_protein_info
 
-    st.subheader("Protein targets")
+    st.subheader(":material/biotech: Protein targets")
     annotated = st.session_state.get(state_key)
     if annotated is not None and len(annotated) != len(hits):
         annotated = None  # results changed since annotation
     if annotated is None:
-        st.caption("Look up the UniProt accessions and protein names of the PDB entries "
-                   "in these results (RCSB PDB).")
-        if st.button("Fetch protein information", key=f"{state_key}_btn"):
+        if st.button("Add UniProt IDs & protein names", key=f"{state_key}_btn",
+                     icon=":material/add:"):
             with st.spinner(f"Querying RCSB for {hits['PDB_ID'].nunique()} PDB entries..."):
                 annotated = add_protein_info(hits)
             st.session_state[state_key] = annotated
@@ -212,7 +220,4 @@ def protein_info_step(hits: pd.DataFrame, state_key: str) -> pd.DataFrame | None
 def sidebar_branding() -> None:
     if LOGO.exists():
         st.logo(str(LOGO), size="large")
-    st.sidebar.caption(
-        f"TrackMyPDB v{__version__} · MIT License  \n"
-        "Developed by Standard Seed Corporation  \n"
-        "S. Sharif, A. Gamage, K. Kotawalagedara, S. Sha, D. Bodun")
+    st.sidebar.caption(f"v{__version__} · MIT · Standard Seed Corporation")

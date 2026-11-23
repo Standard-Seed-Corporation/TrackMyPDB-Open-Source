@@ -27,7 +27,7 @@ except ImportError:
     st.stop()
 
 from ui import common, database_search, disease, extraction, home, pipeline  # noqa: E402
-from ui import similarity, visualizer  # noqa: E402
+from ui import similarity, style, visualizer  # noqa: E402
 
 
 def assistant_page() -> None:
@@ -62,5 +62,6 @@ nav = st.navigation({
     "Step by step": [common.PAGES[k] for k in ("extraction", "similarity")],
     "Tools": [common.PAGES[k] for k in ("visualizer", "disease", "assistant")],
 })
+style.inject()
 common.sidebar_branding()
 nav.run()

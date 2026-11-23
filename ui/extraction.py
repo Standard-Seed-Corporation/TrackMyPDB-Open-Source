@@ -3,7 +3,9 @@
 import streamlit as st
 
 from trackmypdb.extraction import parse_uniprot_ids
+from ui.style import page_header
 from ui.common import PAGES, download_csv, results_table, run_extraction
+from ui.viewer3d import structure_viewer
 
 EXAMPLE_IDS = "P37231, Q9UNQ0, P06276"
 
@@ -22,13 +24,17 @@ def uniprot_input(key: str) -> tuple[list[str], int | None]:
     return ids, (limit or None)
 
 
+def _load_example() -> None:
+    st.session_state["extract_ids"] = "P37231, P06276"
+
+
 def render() -> None:
-    st.header("Ligand extraction")
-    st.caption("Collect the ligands bound in the PDB structures of your proteins, "
-               "with SMILES from the Chemical Component Dictionary.")
+    page_header("Ligand Extraction", "All ligands bound to your proteins, with SMILES.", icon="🔬")
+    st.button("Try an example: PPAR-γ and butyrylcholinesterase", icon=":material/auto_awesome:",
+              on_click=_load_example)
 
     ids, limit = uniprot_input("extract")
-    if st.button("Extract ligands", type="primary", disabled=not ids):
+    if st.button("Extract ligands", type="primary", icon=":material/science:", disabled=not ids):
         result = run_extraction(ids, limit)
         st.session_state["ligands"] = result.records
 
@@ -45,6 +51,7 @@ def render() -> None:
     c3.metric("Unique ligands", ligands["Heteroatom_Code"].nunique())
     c4.metric("With SMILES", int((ligands["SMILES"] != "").sum()))
     results_table(ligands)
+    structure_viewer(ligands[ligands["SMILES"] != ""], "extract", n=200)
     c1, c2 = st.columns(2)
     with c1:
         download_csv(ligands, "Download ligands (CSV)", "ligands")

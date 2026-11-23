@@ -7,6 +7,8 @@ import pandas as pd
 import streamlit as st
 
 from trackmypdb.properties import calculate_properties, draw_molecule
+from ui.molecules import mol_svg
+from ui.style import page_header
 from ui.common import smiles_feedback, smiles_lines, timestamp
 
 
@@ -21,7 +23,7 @@ def _from_upload(upload) -> str | None:
 
 
 def render() -> None:
-    st.header("Molecule viewer")
+    page_header("Molecule Viewer", "Structure and drug-likeness at a glance.", icon="🧪")
     tab1, tab2 = st.tabs(["Enter SMILES", "Upload file"])
     with tab1:
         typed = st.text_input("SMILES", placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O")
@@ -37,8 +39,8 @@ def render() -> None:
     props = calculate_properties(smiles)
     left, right = st.columns([1, 1])
     with left:
-        img = draw_molecule(smiles, size=(500, 500))
-        st.image(img, caption=smiles, width=420)
+        st.markdown(f'<div class="tmp-card"><div class="tmp-mol" style="height:340px">'
+                    f'{mol_svg(smiles, 460, 340)}</div></div>', unsafe_allow_html=True)
         buf = BytesIO()
         draw_molecule(smiles, size=(1000, 1000)).save(buf, format="PNG")
         safe = re.sub(r"[^A-Za-z0-9]+", "_", smiles)[:30].strip("_") or "molecule"

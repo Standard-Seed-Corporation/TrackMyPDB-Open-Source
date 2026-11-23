@@ -6,6 +6,18 @@ All notable changes to TrackMyPDB are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Substructure search (SMILES or SMARTS scaffolds) in the library
+  (`trackmypdb.substructure`), the CLI (`trackmypdb substructure`) and the
+  Database Search page, with example scaffolds.
+- Maximum-common-substructure highlighting: hit cards shade the atoms each ligand
+  shares with the query.
+- Interactive 3D binding-site viewer (3Dmol.js): ligand, surrounding residues within
+  5 Å and a link to the RCSB 3D view, on all result pages.
+- Redesigned interface: home page with banner, live "Try it" search with example
+  drugs, structure cards with similarity badges, page banners, example loaders and a
+  live query preview with drug-likeness descriptors.
+
 ## [2.1.0] - 2026-11-23
 
 ### Fixed

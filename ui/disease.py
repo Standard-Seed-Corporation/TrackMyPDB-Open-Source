@@ -6,6 +6,7 @@ import streamlit as st
 from trackmypdb.annotations import (DISEASE_CATEGORIES, add_disease_annotations,
                                     add_protein_info, matches_keywords)
 from trackmypdb.extraction import is_valid_uniprot_accession, parse_uniprot_ids
+from ui.style import page_header
 from ui.common import download_csv, results_table
 
 SOURCES = {
@@ -52,9 +53,7 @@ def _choose_input() -> tuple[pd.DataFrame | None, str]:
 
 
 def render() -> None:
-    st.header("Disease enrichment")
-    st.caption("Annotate protein targets with disease involvement curated in UniProtKB, "
-               "then filter by disease area.")
+    page_header("Disease Enrichment", "Which diseases involve your targets?", icon="🩺")
 
     df, source_id = _choose_input()
     if df is None or df.empty:

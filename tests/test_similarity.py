@@ -99,3 +99,39 @@ def test_draw_molecule():
     assert draw_molecule(ASPIRIN, size=(200, 200)).size == (200, 200)
     with pytest.raises(InvalidSmilesError):
         draw_molecule("nope")
+
+
+# ------------------------------------------------------------ substructure --
+from trackmypdb.substructure import (match_atoms, maximum_common_substructure,  # noqa: E402
+                                     parse_query, substructure_search)
+
+
+def test_substructure_search_smiles_query(library):
+    hits = substructure_search("c1ccccc1", library)
+    # benzene ring: aspirin, salicylic acid, benzene, NOT caffeine (no benzene ring)
+    assert set(hits["Heteroatom_Code"]) == {"ASA", "SAL", "BNZ"}
+    assert hits.iloc[0]["Heteroatom_Code"] == "BNZ"            # most similar first
+    assert hits["Tanimoto_Similarity"].is_monotonic_decreasing
+
+
+def test_substructure_search_smarts_query(library):
+    hits = substructure_search("[CX3](=O)[OX2H1]", library)       # carboxylic acid
+    assert set(hits["Heteroatom_Code"]) == {"ASA", "SAL"}
+    assert "Tanimoto_Similarity" not in hits.columns            # SMARTS only
+    assert hits["Heavy_Atoms"].is_monotonic_increasing          # smallest first
+
+
+def test_substructure_search_limits_and_errors(library):
+    assert len(substructure_search("c1ccccc1", library, max_results=1)) == 1
+    with pytest.raises(InvalidSmilesError):
+        substructure_search("[invalid", library)
+    assert parse_query("") is None
+
+
+def test_maximum_common_substructure_and_highlight():
+    smarts = maximum_common_substructure(ASPIRIN, SALICYLIC_ACID)
+    assert smarts
+    atoms, bonds = match_atoms(SALICYLIC_ACID, smarts)
+    assert len(atoms) == 10            # all heavy atoms of salicylic acid are shared
+    assert bonds
+    assert maximum_common_substructure("CCO", "nonsense(") is None

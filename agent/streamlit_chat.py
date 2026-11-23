@@ -34,9 +34,8 @@ def _shared_key():
 
 
 def render() -> None:
-    st.header("AI Assistant")
-    st.caption("Ask questions in plain language. Claude answers by calling the "
-               "TrackMyPDB tools through a Model Context Protocol (MCP) server.")
+    from ui.style import page_header
+    page_header("AI Assistant", "Ask in plain language. Claude runs the tools for you.", icon="🤖")
 
     api_key = _shared_key() or st.session_state.get("anthropic_api_key")
     with st.sidebar:

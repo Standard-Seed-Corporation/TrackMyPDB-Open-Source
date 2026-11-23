@@ -120,11 +120,15 @@ shared session with retries and back-off, and failures are reported in the
 extraction output, the bundled database or user-supplied libraries. Fingerprints use
 RDKit's `rdFingerprintGenerator` API and can be precomputed once for repeated searches.
 Deposited ligand SMILES that fail full sanitisation are retried with partial
-sanitisation rather than silently dropped. The `annotations` module adds protein
-information through batched RCSB GraphQL queries and disease involvement from UniProtKB.
+sanitisation rather than silently dropped. The `substructure` module adds scaffold searches with
+SMILES or SMARTS queries and computes maximum common substructures, which the
+interfaces use to highlight the fragment a hit shares with the query. The `annotations`
+module adds protein information through batched RCSB GraphQL queries and disease
+involvement from UniProtKB.
 
 The command-line interface, the Streamlit application and the MCP server are thin
-layers over this API. This separation keeps the scientific logic testable: the test
+layers over this API; the web application additionally displays each hit in its
+binding site with 3Dmol.js. This separation keeps the scientific logic testable: the test
 suite exercises extraction, parsing, fallback logic and annotation against recorded
 API responses, runs without network access in continuous integration, and includes
 optional live tests that detect upstream API changes.

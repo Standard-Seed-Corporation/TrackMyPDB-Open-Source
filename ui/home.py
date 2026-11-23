@@ -2,35 +2,20 @@
 
 import streamlit as st
 
-from trackmypdb import __version__
 from ui.common import PAGES, ligand_database, smiles_is_valid
 from ui.molecules import EXAMPLES, hit_cards, mol_svg
 
-CITATION_APA = (
-    "Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). "
-    f"TrackMyPDB (Version {__version__}) [Computer software]. Standard Seed Corporation. "
-    "https://trackmypdbsscai.streamlit.app/")
-
-# key, icon, title, one-liner
-TOOLS = [
-    ("search", ":material/manage_search:", "Database Search", "Similar PDB ligands in seconds"),
-    ("pipeline", ":material/route:", "Full Pipeline", "Proteins + molecule → ranked hits"),
-    ("extraction", ":material/science:", "Ligand Extraction", "Every ligand of your proteins"),
-    ("similarity", ":material/compare_arrows:", "Similarity Ranking", "Rank any ligand list"),
-    ("visualizer", ":material/hub:", "Molecule Viewer", "Structure + drug-likeness"),
-    ("disease", ":material/health_and_safety:", "Disease Enrichment", "Targets → diseases"),
-]
-
-
 
 def _hero() -> None:
-    chips = "".join(f'<span class="tmp-chip">{c}</span>'
-                    for c in ["RCSB PDB", "PDBe", "UniProt", "RDKit", "MCP-ready"])
+    steps = ["UniProt", "PDB structures", "Ligands", "Similarity", "Diseases"]
+    flow = '<span class="tmp-hero-arrow">→</span>'.join(
+        f'<span class="tmp-chip">{s}</span>' for s in steps)
     art = mol_svg(EXAMPLES["Imatinib"], 420, 260, white=True)
     st.markdown(
         '<div class="tmp-hero"><div class="tmp-hero-text"><h1>TrackMyPDB</h1>'
         "<p>Ligands from protein structures, ranked by chemical similarity.</p>"
-        f'{chips}</div><div class="tmp-hero-art">{art}</div></div>',
+        f'<div class="tmp-hero-flow">{flow}</div></div>'
+        f'<div class="tmp-hero-art">{art}</div></div>',
         unsafe_allow_html=True)
 
 
@@ -73,32 +58,9 @@ def _quick_try() -> None:
                  icon=":material/arrow_forward:")
 
 
-def _tools() -> None:
-    cols = st.columns(3)
-    for i, (key, icon, title, line) in enumerate(TOOLS):
-        with cols[i % 3].container(border=True):
-            st.markdown(f"#### {icon} {title}")
-            st.caption(line)
-            st.page_link(PAGES[key], label="Open", icon=":material/arrow_forward:")
-
-
 def render() -> None:
     _hero()
     _stats()
     _quick_try()
-    st.markdown("### :material/apps: Tools")
-    _tools()
-
-    st.markdown(
-        '<div class="tmp-flow">' + '<span class="tmp-arrow">→</span>'.join(
-            f'<span class="tmp-step">{s}</span>'
-            for s in ["UniProt", "PDB structures", "Ligands", "SMILES", "Similarity",
-                      "Targets & diseases"]) + "</div>", unsafe_allow_html=True)
-
-    with st.expander(":material/format_quote: Cite TrackMyPDB"):
-        st.code(CITATION_APA, language="text")
-        st.caption("BibTeX: see CITATION.cff in the repository. Please also acknowledge "
-                   "RCSB PDB, PDBe, UniProt and RDKit.")
-    with st.expander(":material/groups: Team"):
-        st.markdown("Suliman Sharif (supervisor) · Anu Gamage (lead) · Kalana Kotawalagedara · "
-                    "Sakeer Sha · Damilola Bodun  \nStandard Seed Corporation · MIT License")
+    st.markdown('<p class="tmp-powered">Powered by open data and software from '
+                "RCSB PDB · PDBe · UniProt · RDKit</p>", unsafe_allow_html=True)

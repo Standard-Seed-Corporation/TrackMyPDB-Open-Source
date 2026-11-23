@@ -217,7 +217,24 @@ def protein_info_step(hits: pd.DataFrame, state_key: str) -> pd.DataFrame | None
     return annotated
 
 
+CITATION_APA = (
+    "Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). "
+    f"TrackMyPDB (Version {__version__}) [Computer software]. Standard Seed Corporation. "
+    "https://trackmypdbsscai.streamlit.app/")
+
+
 def sidebar_branding() -> None:
     if LOGO.exists():
         st.logo(str(LOGO), size="large")
-    st.sidebar.caption(f"v{__version__} · MIT · Standard Seed Corporation")
+    with st.sidebar:
+        c1, c2 = st.columns(2)
+        with c1.popover("Cite", icon=":material/format_quote:"):
+            st.markdown("**Cite TrackMyPDB**")
+            st.code(CITATION_APA, language="text", wrap_lines=True)
+            st.caption("BibTeX: CITATION.cff in the repository. Please also acknowledge "
+                       "RCSB PDB, PDBe, UniProt and RDKit.")
+        with c2.popover("Team", icon=":material/groups:"):
+            st.markdown("**Standard Seed Corporation**\n\n"
+                        "- Suliman Sharif · supervisor\n- Anu Gamage · lead engineer\n"
+                        "- Kalana Kotawalagedara\n- Sakeer Sha\n- Damilola Bodun")
+        st.caption(f"v{__version__} · MIT License")

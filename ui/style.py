@@ -106,6 +106,12 @@ button[data-testid="stBaseButton-primary"], button[kind="primary"] {
 button[data-testid="stBaseButton-primary"]:hover, button[kind="primary"]:hover {
   transform: translateY(-1px); box-shadow: 0 8px 20px rgba(46,125,50,.35);}
 
+/* workflow inside the hero */
+.tmp-hero-flow {display: flex; flex-wrap: wrap; align-items: center; gap: .15rem;}
+.tmp-hero-flow .tmp-chip {margin: 0;}
+.tmp-hero-arrow {color: rgba(255,255,255,.75); margin: 0 .3rem; font-weight: 700;}
+.tmp-powered {text-align: center; color: #9E9E9E; font-size: .82rem; margin-top: 1.6rem;}
+
 /* metric numbers in brand colour */
 div[data-testid="stMetricValue"] {color: #1B5E20;}
 </style>

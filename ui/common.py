@@ -223,18 +223,29 @@ CITATION_APA = (
     "https://trackmypdbsscai.streamlit.app/")
 
 
+@st.cache_data
+def _logo_b64() -> str:
+    import base64
+    return base64.b64encode(LOGO.read_bytes()).decode() if LOGO.exists() else ""
+
+
 def sidebar_branding() -> None:
     if LOGO.exists():
         st.logo(str(LOGO), size="large")
+    logo = _logo_b64()
+    img = (f'<img src="data:image/png;base64,{logo}" alt="Standard Seed Corporation logo">'
+           if logo else "")
     with st.sidebar:
-        c1, c2 = st.columns(2)
-        with c1.popover("Cite", icon=":material/format_quote:"):
-            st.markdown("**Cite TrackMyPDB**")
+        st.markdown(
+            f'<div class="tmp-brand">{img}'
+            '<div class="tmp-brand-org">Developed and released by<br>'
+            "<b>Standard Seed Corporation</b></div>"
+            f'<span class="tmp-brand-ver">TrackMyPDB v{__version__}</span>'
+            '<div class="tmp-brand-team">Suliman Sharif · Anu Gamage · Kalana Kotawalagedara'
+            " · Sakeer Sha · Damilola Bodun</div>"
+            '<div class="tmp-brand-lic">MIT License</div></div>',
+            unsafe_allow_html=True)
+        with st.popover("Cite TrackMyPDB", icon=":material/format_quote:"):
             st.code(CITATION_APA, language="text", wrap_lines=True)
             st.caption("BibTeX: CITATION.cff in the repository. Please also acknowledge "
                        "RCSB PDB, PDBe, UniProt and RDKit.")
-        with c2.popover("Team", icon=":material/groups:"):
-            st.markdown("**Standard Seed Corporation**\n\n"
-                        "- Suliman Sharif · supervisor\n- Anu Gamage · lead engineer\n"
-                        "- Kalana Kotawalagedara\n- Sakeer Sha\n- Damilola Bodun")
-        st.caption(f"v{__version__} · MIT License")

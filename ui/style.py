@@ -112,6 +112,20 @@ button[data-testid="stBaseButton-primary"]:hover, button[kind="primary"]:hover {
 .tmp-hero-arrow {color: rgba(255,255,255,.75); margin: 0 .3rem; font-weight: 700;}
 .tmp-powered {text-align: center; color: #9E9E9E; font-size: .82rem; margin-top: 1.6rem;}
 
+/* sidebar branding card */
+.tmp-brand {text-align: center; background: #fff; border: 1px solid #DCEDDF;
+            border-radius: 16px; padding: 1rem .9rem .9rem; margin: .4rem 0 .7rem;
+            box-shadow: 0 4px 14px rgba(46,125,50,.08);}
+.tmp-brand img {width: 72px; height: 72px; object-fit: contain; border-radius: 12px;
+                margin-bottom: .5rem;}
+.tmp-brand-org {font-size: .82rem; color: #5F6368; line-height: 1.35;}
+.tmp-brand-org b {color: #1B5E20; font-size: .95rem;}
+.tmp-brand-ver {display: inline-block; margin: .55rem 0 .5rem; padding: .15rem .7rem;
+                border-radius: 999px; font-size: .78rem; font-weight: 700; color: #fff;
+                background: linear-gradient(120deg, #1B5E20, #43A047);}
+.tmp-brand-team {font-size: .78rem; color: #3C4043; line-height: 1.45;}
+.tmp-brand-lic {font-size: .72rem; color: #9E9E9E; margin-top: .4rem;}
+
 /* metric numbers in brand colour */
 div[data-testid="stMetricValue"] {color: #1B5E20;}
 </style>

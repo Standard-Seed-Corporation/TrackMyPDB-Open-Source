@@ -24,7 +24,9 @@ from anthropic import Anthropic
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
+MAX_TOOL_ROUNDS = int(os.getenv("TRACKMYPDB_MAX_TOOL_ROUNDS", "8"))
+MAX_TOOL_RESULT_CHARS = 30_000
 
 SYSTEM_PROMPT = (
     "You are TrackMyPDB Assistant, a friendly bioinformatics helper for the "
@@ -32,8 +34,9 @@ SYSTEM_PROMPT = (
     "drug-like heteroatoms (ligands) and their SMILES from PDB structures, and "
     "rank molecules by Tanimoto similarity using Morgan fingerprints -- all via "
     "the provided tools. When the user gives UniProt IDs together with a target "
-    "molecule, use run_pipeline. Keep max_pdbs_per_uniprot small (<=5) unless "
-    "asked, because extraction calls slow public APIs (RCSB, PDBe, PubChem). "
+    "molecule, use run_pipeline. For a molecule without a protein, use "
+    "search_ligand_database (offline and fast). Keep max_pdbs_per_uniprot small (<=5) unless "
+    "asked, because extraction calls slow public APIs (RCSB, PDBe). "
     "Explain the chemistry in plain language and always show the top hits."
 )
 
@@ -72,7 +75,7 @@ async def _run(messages, api_key, model, on_event):
             "input_schema": t.inputSchema,
         } for t in tools]
 
-        while True:
+        for _round in range(MAX_TOOL_ROUNDS + 1):
             resp = client.messages.create(
                 model=model,
                 max_tokens=2048,
@@ -105,6 +108,8 @@ async def _run(messages, api_key, model, on_event):
                 try:
                     result = await session.call_tool(tu.name, tu.input or {})
                     text = _tool_result_text(result)
+                    if len(text) > MAX_TOOL_RESULT_CHARS:
+                        text = text[:MAX_TOOL_RESULT_CHARS] + "\n...[truncated]"
                     is_error = bool(getattr(result, "isError", False))
                 except Exception as exc:  # noqa: BLE001
                     text, is_error = f"Tool error: {exc}", True
@@ -117,6 +122,12 @@ async def _run(messages, api_key, model, on_event):
                     "is_error": is_error,
                 })
             messages.append({"role": "user", "content": tool_results})
+
+        note = ("I stopped after %d rounds of tool calls without reaching an answer. "
+                "Try a narrower question (fewer UniProt IDs or structures)." % MAX_TOOL_ROUNDS)
+        # Keep user/assistant turns alternating for the next request.
+        messages.append({"role": "assistant", "content": [{"type": "text", "text": note}]})
+        return note, messages
 
 
 def run_agent(messages, api_key=None, model=None, on_event=None):

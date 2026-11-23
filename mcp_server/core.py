@@ -1,196 +1,127 @@
 """
-TrackMyPDB core tool functions (Streamlit-free).
+TrackMyPDB tool functions for the MCP server and the in-app agent.
 
-These wrap the existing backend classes so they run anywhere -- the MCP server,
-the in-app Claude agent, tests, or a notebook -- and return plain,
-JSON-serialisable Python objects instead of rendering Streamlit UI.
+Thin wrappers around the ``trackmypdb`` library that return plain,
+JSON-serialisable dictionaries. Result sizes are capped so that tool output
+stays small enough for a language-model context window.
 
-MIT License - Open Source Project.
+MIT License.
 """
 
 from __future__ import annotations
 
-import sys
+import functools
 
-# --- Install the Streamlit shim BEFORE importing the backend ------------------
-# The backend does `import streamlit as st`. In the MCP server process there is
-# no Streamlit runtime, so we register a silent no-op shim. setdefault means:
-#   * MCP server process  -> shim is installed (streamlit not imported yet)
-#   * inside the live app -> real streamlit is already imported, so this is a
-#     no-op and the app keeps working normally.
-from . import st_shim as _st_shim
-sys.modules.setdefault("streamlit", _st_shim)
+import pandas as pd
 
-from backend.heteroatom_extractor import HeteroatomExtractor  # noqa: E402
-from backend.similarity_analyzer import MolecularSimilarityAnalyzer  # noqa: E402
+from trackmypdb.extraction import HeteroatomExtractor
+from trackmypdb.ligand_db import load_ligand_db
 
-import csv  # noqa: E402
-import functools  # noqa: E402
-import os  # noqa: E402
-
-import pandas as pd  # noqa: E402
+MAX_RECORDS_RETURNED = 200
+LIGAND_FIELDS = ["UniProt_ID", "PDB_ID", "Heteroatom_Code", "Chemical_Name", "Formula", "SMILES"]
+HIT_FIELDS = ["PDB_ID", "Heteroatom_Code", "Chemical_Name", "Formula", "SMILES",
+              "Tanimoto_Similarity"]
 
 
-# --- Local ligand database fallback -------------------------------------------
-# The repo ships pdb_ligands_trackmypdb_open_source.csv (PDB_ID, Heteroatom_Code,
-# SMILES, Chemical_Name, Formula, ...). When the online SMILES sources
-# (RCSB / PDBe / PubChem) are slow or blocked, we fall back to this local file so
-# extraction still returns usable SMILES for known ligand codes.
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_LIGAND_CSV = os.path.join(_REPO_ROOT, "pdb_ligands_trackmypdb_open_source.csv")
+def _records(df: pd.DataFrame, fields: list[str], limit: int = MAX_RECORDS_RETURNED) -> list[dict]:
+    cols = [c for c in fields if c in df.columns]
+    return df[cols].head(limit).to_dict(orient="records")
 
-
-@functools.lru_cache(maxsize=1)
-def _local_ligand_map() -> dict:
-    """Map Heteroatom_Code -> {SMILES, Chemical_Name, Formula} from the local CSV."""
-    mapping = {}
-    try:
-        with open(_LIGAND_CSV, newline="", encoding="utf-8") as fh:
-            for row in csv.DictReader(fh):
-                code = (row.get("Heteroatom_Code") or "").strip()
-                smiles = (row.get("SMILES") or "").strip()
-                if code and smiles and code not in mapping:
-                    mapping[code] = {
-                        "SMILES": smiles,
-                        "Chemical_Name": (row.get("Chemical_Name") or "").strip(),
-                        "Formula": (row.get("Formula") or "").strip(),
-                    }
-    except FileNotFoundError:
-        pass
-    return mapping
-
-
-def _fill_missing_smiles_from_local_db(records: list) -> int:
-    """For records with no SMILES, backfill from the local ligand DB. Returns count."""
-    local = _local_ligand_map()
-    filled = 0
-    for r in records:
-        if r.get("SMILES"):
-            continue
-        hit = local.get((r.get("Heteroatom_Code") or "").strip())
-        if hit:
-            r["SMILES"] = hit["SMILES"]
-            if not r.get("Chemical_Name"):
-                r["Chemical_Name"] = hit["Chemical_Name"]
-            if not r.get("Formula"):
-                r["Formula"] = hit["Formula"]
-            r["Status"] = "local_db"
-            filled += 1
-    return filled
-
-
-# ------------------------------------------------------------------ tools -----
 
 def get_pdbs_for_uniprot(uniprot_id: str) -> list:
-    """Return the list of PDB structure IDs mapped to a UniProt accession."""
+    """PDB structure IDs mapped to a UniProt accession, best first."""
     return HeteroatomExtractor().get_pdbs_for_uniprot((uniprot_id or "").strip())
 
 
-def extract_heteroatoms(uniprot_ids, max_pdbs_per_uniprot: int = 5,
-                        drug_like_only: bool = True) -> dict:
-    """
-    Extract drug-like heteroatoms (ligands) and their SMILES from the PDB
-    structures associated with the given UniProt IDs.
-
-    max_pdbs_per_uniprot caps how many structures are downloaded per UniProt ID
-    (public APIs are slow); set to 0 for no cap.
-    """
+def extract_heteroatoms(uniprot_ids, max_pdbs_per_uniprot: int = 5) -> dict:
+    """Extract ligands and their SMILES from the PDB structures of the given
+    UniProt IDs. ``max_pdbs_per_uniprot`` = 0 means no cap."""
     if isinstance(uniprot_ids, str):
         uniprot_ids = [uniprot_ids]
-    uniprot_ids = [u.strip() for u in uniprot_ids if u and u.strip()]
-
-    ex = HeteroatomExtractor()
-    records = []
-    pdbs_per_uniprot = {}
-
-    for up in uniprot_ids:
-        pdbs = ex.get_pdbs_for_uniprot(up)
-        if max_pdbs_per_uniprot:
-            pdbs = pdbs[:max_pdbs_per_uniprot]
-        pdbs_per_uniprot[up] = pdbs
-        for pdb in pdbs:
-            lines = ex.download_pdb(pdb)
-            if not lines:
-                continue
-            records.extend(ex.process_pdb_heteroatoms(pdb, up, lines))
-
-    # Backfill any SMILES the online sources failed to return, using the local DB.
-    filled_from_local = _fill_missing_smiles_from_local_db(records)
-
-    if drug_like_only:
-        real = [r for r in records
-                if r.get("Heteroatom_Code") not in ("NO_DRUG_HETEROATOMS", "NO_HETEROATOMS")]
-        records = real or records
-
-    with_smiles = [r for r in records if r.get("SMILES")]
+    result = HeteroatomExtractor().extract(uniprot_ids,
+                                           max_structures=max_pdbs_per_uniprot or None)
     return {
-        "uniprot_ids": uniprot_ids,
-        "pdbs_per_uniprot": pdbs_per_uniprot,
-        "record_count": len(records),
-        "records_with_smiles": len(with_smiles),
-        "records_filled_from_local_db": filled_from_local,
-        "heteroatoms": records,
+        **result.summary,
+        "pdbs_per_uniprot": result.pdbs_per_uniprot,
+        "failed_structures": result.failed_structures,
+        "truncated": len(result.records) > MAX_RECORDS_RETURNED,
+        "heteroatoms": _records(result.records, LIGAND_FIELDS),
     }
 
 
 def analyze_similarity(target_smiles: str, heteroatoms, top_n: int = 10,
-                       min_similarity: float = 0.0, radius: int = 2,
-                       n_bits: int = 2048) -> dict:
-    """
-    Rank the supplied heteroatom records by Tanimoto similarity (Morgan
-    fingerprints) against a target SMILES. `heteroatoms` is a list of dicts as
-    returned by extract_heteroatoms()['heteroatoms'].
-    """
+                       min_similarity: float = 0.0, radius: int = 2, n_bits: int = 2048) -> dict:
+    """Rank heteroatom records (dicts with a ``SMILES`` key) by Tanimoto
+    similarity to ``target_smiles``."""
+    from trackmypdb.similarity import InvalidSmilesError, rank_by_similarity
+
     df = pd.DataFrame(heteroatoms or [])
     if df.empty or "SMILES" not in df.columns:
         return {"target_smiles": target_smiles, "result_count": 0, "results": [],
-                "error": "No heteroatom records with a SMILES column were provided."}
-
-    analyzer = MolecularSimilarityAnalyzer(radius=radius, n_bits=n_bits)
-    processed = analyzer.load_and_process_dataframe(df)
-    if processed.empty:
-        return {"target_smiles": target_smiles, "result_count": 0, "results": [],
-                "error": "None of the provided SMILES could be parsed into fingerprints."}
-
+                "error": "No heteroatom records with a SMILES field were provided."}
     try:
-        results = analyzer.find_similar_ligands(
-            target_smiles=target_smiles, processed_df=processed,
-            top_n=top_n, min_similarity=min_similarity)
-    except ValueError as exc:
-        return {"target_smiles": target_smiles, "result_count": 0, "results": [],
-                "error": str(exc)}
-
-    cols = [c for c in ["PDB_ID", "Heteroatom_Code", "Chemical_Name", "Formula",
-                        "SMILES", "Tanimoto_Similarity"] if c in results.columns]
-    out = results[cols].copy()
-    if "Tanimoto_Similarity" in out.columns:
-        out["Tanimoto_Similarity"] = out["Tanimoto_Similarity"].round(4)
-    return {"target_smiles": target_smiles, "result_count": int(len(out)),
-            "results": out.to_dict(orient="records")}
+        hits = rank_by_similarity(target_smiles, df, top_n=top_n, min_similarity=min_similarity,
+                                  radius=radius, n_bits=n_bits)
+    except InvalidSmilesError as exc:
+        return {"target_smiles": target_smiles, "result_count": 0, "results": [], "error": str(exc)}
+    hits["Tanimoto_Similarity"] = hits["Tanimoto_Similarity"].round(4)
+    return {"target_smiles": target_smiles, "result_count": int(len(hits)),
+            "results": _records(hits, HIT_FIELDS)}
 
 
 def run_pipeline(uniprot_ids, target_smiles: str, max_pdbs_per_uniprot: int = 5,
                  top_n: int = 10, min_similarity: float = 0.0, radius: int = 2,
                  n_bits: int = 2048) -> dict:
-    """End-to-end: extract heteroatoms for UniProt IDs, then rank them by
-    similarity to a target molecule. This is the tool the agent should prefer."""
-    extraction = extract_heteroatoms(uniprot_ids, max_pdbs_per_uniprot=max_pdbs_per_uniprot)
-    similarity = analyze_similarity(target_smiles, extraction["heteroatoms"],
-                                    top_n=top_n, min_similarity=min_similarity,
-                                    radius=radius, n_bits=n_bits)
-    summary = {k: v for k, v in extraction.items() if k != "heteroatoms"}
-    return {"extraction_summary": summary, "similarity": similarity}
+    """Extract ligands for UniProt IDs, then rank them against a target molecule."""
+    from trackmypdb.similarity import InvalidSmilesError, rank_by_similarity
+
+    if isinstance(uniprot_ids, str):
+        uniprot_ids = [uniprot_ids]
+    result = HeteroatomExtractor().extract(uniprot_ids,
+                                           max_structures=max_pdbs_per_uniprot or None)
+    summary = {**result.summary, "pdbs_per_uniprot": result.pdbs_per_uniprot}
+    try:
+        hits = rank_by_similarity(target_smiles, result.records, top_n=top_n,
+                                  min_similarity=min_similarity, radius=radius, n_bits=n_bits)
+    except InvalidSmilesError as exc:
+        return {"extraction_summary": summary, "similarity": {"error": str(exc), "results": []}}
+    hits["Tanimoto_Similarity"] = hits["Tanimoto_Similarity"].round(4)
+    return {"extraction_summary": summary,
+            "similarity": {"target_smiles": target_smiles, "result_count": int(len(hits)),
+                           "results": _records(hits, ["UniProt_ID"] + HIT_FIELDS)}}
 
 
-def compare_smiles(smiles_a: str, smiles_b: str, radius: int = 2,
-                   n_bits: int = 2048) -> dict:
-    """Compute Tanimoto similarity between two molecules given as SMILES."""
-    analyzer = MolecularSimilarityAnalyzer(radius=radius, n_bits=n_bits)
-    fp_a = analyzer.smiles_to_fingerprint(smiles_a)
-    fp_b = analyzer.smiles_to_fingerprint(smiles_b)
-    if fp_a is None or fp_b is None:
-        return {"error": "One or both SMILES are invalid.",
-                "valid_a": fp_a is not None, "valid_b": fp_b is not None}
-    sim = analyzer.calculate_tanimoto_similarity(fp_a, fp_b)
-    return {"smiles_a": smiles_a, "smiles_b": smiles_b,
-            "tanimoto_similarity": round(float(sim), 4)}
+@functools.lru_cache(maxsize=4)
+def _db_fingerprints(radius: int, n_bits: int):
+    from trackmypdb.similarity import fingerprints
+    db = load_ligand_db(with_smiles_only=True)
+    return db, fingerprints(db["SMILES"].tolist(), radius, n_bits)
+
+
+def search_ligand_database(target_smiles: str, top_n: int = 10, min_similarity: float = 0.3,
+                           radius: int = 2, n_bits: int = 2048) -> dict:
+    """Search the bundled offline PDB ligand database by similarity (no network)."""
+    from trackmypdb.similarity import InvalidSmilesError, rank_by_similarity
+
+    db, fps = _db_fingerprints(radius, n_bits)
+    try:
+        hits = rank_by_similarity(target_smiles, db, top_n=top_n, min_similarity=min_similarity,
+                                  radius=radius, n_bits=n_bits, precomputed_fps=fps)
+    except InvalidSmilesError as exc:
+        return {"target_smiles": target_smiles, "result_count": 0, "results": [], "error": str(exc)}
+    hits["Tanimoto_Similarity"] = hits["Tanimoto_Similarity"].round(4)
+    return {"target_smiles": target_smiles, "result_count": int(len(hits)),
+            "results": _records(hits, HIT_FIELDS)}
+
+
+def compare_smiles(smiles_a: str, smiles_b: str, radius: int = 2, n_bits: int = 2048) -> dict:
+    """Tanimoto similarity between two molecules given as SMILES."""
+    from trackmypdb.similarity import InvalidSmilesError, compare_smiles as _compare, fingerprint
+
+    try:
+        sim = _compare(smiles_a, smiles_b, radius, n_bits)
+    except InvalidSmilesError as exc:
+        return {"error": str(exc),
+                "valid_a": fingerprint(smiles_a, radius, n_bits) is not None,
+                "valid_b": fingerprint(smiles_b, radius, n_bits) is not None}
+    return {"smiles_a": smiles_a, "smiles_b": smiles_b, "tanimoto_similarity": round(sim, 4)}

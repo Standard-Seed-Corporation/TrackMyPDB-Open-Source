@@ -1,48 +1,11 @@
 @echo off
-echo TrackMyPDB Installation Script
-echo ==============================
-echo.
-
-REM Check if Python is installed
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.7+ from https://python.org
-    echo Make sure to check "Add Python to PATH" during installation
-    pause
-    exit /b 1
-)
-
-echo Python version:
-python --version
-echo.
-
-REM Upgrade pip
-echo Upgrading pip...
+REM TrackMyPDB - Windows installer (creates a local virtual environment)
+python --version >nul 2>&1 || (echo Python 3.10+ is required: https://www.python.org/downloads/ & pause & exit /b 1)
+python -m venv .venv || (echo Could not create virtual environment & pause & exit /b 1)
+call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip
-
-REM Install dependencies
-echo Installing required packages...
-pip install -r requirements.txt
-
-REM Check RDKit installation specifically
+pip install -e ".[app,agent]" || (echo Installation failed & pause & exit /b 1)
+python -c "import trackmypdb, rdkit; print('TrackMyPDB', trackmypdb.__version__, 'installed with RDKit', rdkit.__version__)"
 echo.
-echo Checking RDKit installation...
-python -c "from rdkit import Chem; print('RDKit successfully installed!')" 2>nul
-if errorlevel 1 (
-    echo WARNING: RDKit installation may have failed
-    echo Trying alternative installation method...
-    conda install -c conda-forge rdkit -y 2>nul
-    if errorlevel 1 (
-        echo Please install RDKit manually:
-        echo   conda install -c conda-forge rdkit
-        echo   OR
-        echo   pip install rdkit-pypi
-    )
-)
-
-echo.
-echo Installation completed!
-echo To run the application, execute: run.bat
-echo Or use: streamlit run streamlit_app.py
-pause 
+echo Done. Start the app with run.bat
+pause

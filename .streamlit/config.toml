@@ -1,13 +1,12 @@
 [theme]
-primaryColor = "#007AFF"
+primaryColor = "#2E7D32"
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F5F5F7"
+secondaryBackgroundColor = "#F1F8F2"
 textColor = "#1D1D1F"
 
 [server]
 port = 8501
-enableCORS = false
-enableXsrfProtection = false
+maxUploadSize = 50
 
 [browser]
-gatherUsageStats = false 
+gatherUsageStats = false

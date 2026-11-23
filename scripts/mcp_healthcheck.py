@@ -7,7 +7,7 @@ client <-> server <-> backend chain works -- no Anthropic key and no internet
 required.
 
 Run:
-    py -3.11 scripts/mcp_healthcheck.py
+    python scripts/mcp_healthcheck.py
 """
 
 from __future__ import annotations
@@ -50,8 +50,8 @@ async def main() -> int:
             text = "".join(getattr(b, "text", "") for b in (result.content or []))
             print("   ->", text)
 
-            ok = '"tanimoto_similarity": 1.0' in text or "1.0" in text
-            print("\nHEALTH CHECK:", "PASS " * 0 + ("PASS" if ok else "CHECK OUTPUT"))
+            ok = '"tanimoto_similarity": 1.0' in text
+            print("\nHEALTH CHECK:", "PASS" if ok else "CHECK OUTPUT")
             return 0 if ok else 1
 
 

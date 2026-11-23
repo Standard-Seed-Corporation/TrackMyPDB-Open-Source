@@ -19,7 +19,7 @@ authors:
   - name: Kalana Kotawalagedara
     orcid: 0000-0000-0000-0000
     affiliation: 1
-  - name: Sakeer Sha
+  - name: Sakeer MR
     orcid: 0000-0000-0000-0000
     affiliation: 1
   - name: Damilola Bodun

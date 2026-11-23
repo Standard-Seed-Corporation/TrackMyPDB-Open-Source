@@ -164,5 +164,5 @@ Developed and released by Standard Seed Corporation.
 - Project supervisor: [Suliman Sharif](https://www.linkedin.com/in/sulimansharif/)
 - Lead engineer: [Anu Gamage](https://www.linkedin.com/in/anu-gamage-62192b201/)
 - Associate engineers: [Kalana Kotawalagedara](https://www.linkedin.com/in/kalana-kotawalagedara-962939225/),
-  [Sakeer Sha](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/),
+  [Sakeer MR](https://www.linkedin.com/in/mohammadhu-rifaydheen-sakeer/),
   [Damilola Bodun](https://www.linkedin.com/in/damilola-bodun-123987208/)

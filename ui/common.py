@@ -218,7 +218,7 @@ def protein_info_step(hits: pd.DataFrame, state_key: str) -> pd.DataFrame | None
 
 
 CITATION_APA = (
-    "Sharif, S., Gamage, A., Kotawalagedara, K., Sha, S., & Bodun, D. (2025). "
+    "Sharif, S., Gamage, A., Kotawalagedara, K., MR, S., & Bodun, D. (2025). "
     f"TrackMyPDB (Version {__version__}) [Computer software]. Standard Seed Corporation. "
     "https://trackmypdbsscai.streamlit.app/")
 
@@ -242,7 +242,7 @@ def sidebar_branding() -> None:
             "<b>Standard Seed Corporation</b></div>"
             f'<span class="tmp-brand-ver">TrackMyPDB v{__version__}</span>'
             '<div class="tmp-brand-team">Suliman Sharif · Anu Gamage · Kalana Kotawalagedara'
-            " · Sakeer Sha · Damilola Bodun</div>"
+            " · Sakeer MR · Damilola Bodun</div>"
             '<div class="tmp-brand-lic">MIT License</div></div>',
             unsafe_allow_html=True)
         with st.popover("Cite TrackMyPDB", icon=":material/format_quote:"):

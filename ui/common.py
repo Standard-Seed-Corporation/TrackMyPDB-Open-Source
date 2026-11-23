@@ -218,7 +218,7 @@ def protein_info_step(hits: pd.DataFrame, state_key: str) -> pd.DataFrame | None
 
 
 CITATION_APA = (
-    "Sharif, S., Gamage, A., Kotawalagedara, K., MR, S., & Bodun, D. (2025). "
+    "Sharif, S., Gamage, A., Kotawalagedara, K., Sakeer, M. R., & Bodun, D. (2025). "
     f"TrackMyPDB (Version {__version__}) [Computer software]. Standard Seed Corporation. "
     "https://trackmypdbsscai.streamlit.app/")
 

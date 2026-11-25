@@ -3,7 +3,7 @@
 import streamlit as st
 
 from trackmypdb.extraction import parse_uniprot_ids
-from ui.style import page_header
+from ui.style import how_to, page_header
 from ui.common import PAGES, download_csv, results_table, run_extraction
 from ui.viewer3d import structure_viewer
 
@@ -29,7 +29,14 @@ def _load_example() -> None:
 
 
 def render() -> None:
-    page_header("Ligand Extraction", "All ligands bound to your proteins, with SMILES.", icon="🔬")
+    page_header("Ligand Extraction", "List every ligand bound in the PDB structures of your "
+                "proteins, with SMILES.", icon="🔬")
+    how_to([
+        "Enter UniProt accessions, or click **Try an example**.",
+        "Choose how many structures per protein to use (best structures first).",
+        "Click **Extract ligands**.",
+        "Download the table, view a ligand in 3D, or rank them in **Similarity Ranking**.",
+    ], tip="Water, ions, buffers and modified residues are removed automatically.")
     st.button("Try an example: PPAR-γ and butyrylcholinesterase", icon=":material/auto_awesome:",
               on_click=_load_example)
 

@@ -6,6 +6,10 @@ All notable changes to TrackMyPDB are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Renamed "Database Search" to **Quick Search** and "Full Pipeline" to **Target Search**;
+  every page now has a one-line description and a collapsible "How to use" guide.
+
 ### Added
 - Substructure search (SMILES or SMARTS scaffolds) in the library
   (`trackmypdb.substructure`), the CLI (`trackmypdb substructure`) and the

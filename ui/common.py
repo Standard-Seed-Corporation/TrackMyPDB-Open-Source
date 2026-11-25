@@ -204,12 +204,20 @@ def protein_info_step(hits: pd.DataFrame, state_key: str) -> pd.DataFrame | None
                      icon=":material/add:"):
             with st.spinner(f"Querying RCSB for {hits['PDB_ID'].nunique()} PDB entries..."):
                 annotated = add_protein_info(hits)
-            st.session_state[state_key] = annotated
+            if (annotated["UniProt_IDs"] == "N/A").all():
+                # Nothing came back: almost always a network problem. Don't keep the
+                # empty result, so the user can simply try again.
+                st.warning("Could not get protein information from RCSB PDB. Check your "
+                           "internet connection and click the button again.",
+                           icon=":material/wifi_off:")
+                annotated = None
+            else:
+                st.session_state[state_key] = annotated
     if annotated is not None:
         results_table(annotated)
         accs = sorted({a.strip() for v in annotated["UniProt_IDs"] for a in str(v).split(",")
                        if a.strip() and a.strip() != "N/A"})
-        st.caption(f"{len(accs)} distinct UniProt accessions: "
+        st.caption(f"{len(accs)} distinct UniProt accession(s): "
                    + ", ".join(f"[{a}](https://www.uniprot.org/uniprotkb/{a})" for a in accs[:30])
                    + (" ..." if len(accs) > 30 else ""))
         download_csv(annotated, "Download with protein information (CSV)",

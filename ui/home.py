@@ -24,7 +24,7 @@ def _stats() -> None:
     items = [("🧬", f"{db['PDB_ID'].nunique():,}", "PDB entries"),
              ("💊", f"{db['Heteroatom_Code'].nunique():,}", "distinct ligands"),
              ("📚", f"{len(db):,}", "ligand records"),
-             ("⚡", "< 1 s", "database search")]
+             ("⚡", "< 1 s", "Quick Search")]
     st.markdown('<div class="tmp-stats">' + "".join(
         f'<div class="tmp-stat" style="animation-delay:{i * 0.08:.2f}s"><i>{icon}</i>'
         f'<b>{v}</b><span>{k}</span></div>' for i, (icon, v, k) in enumerate(items))
@@ -54,7 +54,7 @@ def _quick_try() -> None:
     db, fps = ligand_database(2, 2048)
     hits = rank_by_similarity(smiles, db, top_n=5, precomputed_fps=fps)
     hit_cards(hits, n=5, query_smiles=smiles)
-    st.page_link(PAGES["search"], label="See all matches in Database Search",
+    st.page_link(PAGES["search"], label="See all matches in Quick Search",
                  icon=":material/arrow_forward:")
 
 

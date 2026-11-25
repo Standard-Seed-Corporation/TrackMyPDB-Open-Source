@@ -1,7 +1,7 @@
 """The bundled offline ligand database (``trackmypdb/data/pdb_ligands.csv``).
 
 It maps PDB entries to their co-crystallised ligands with SMILES, names and
-formulae. It is used for the "SMILES Database Search" page and as an offline
+formulae. It is used for the "Quick Search" page and as an offline
 fallback when the online chemical-component services cannot be reached.
 """
 

@@ -136,6 +136,14 @@ def inject() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
 
 
+def how_to(steps: list[str], tip: str | None = None) -> None:
+    """Collapsed "How to use" box with numbered steps and an optional tip."""
+    with st.expander("How to use", icon=":material/help:"):
+        st.markdown("\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1)))
+        if tip:
+            st.caption(f"💡 {tip}")
+
+
 def page_header(title: str, subtitle: str = "", icon: str = "🧬") -> None:
     """Branded page banner: icon tile, title and a one-line subtitle."""
     st.markdown(f'<div class="tmp-pagehead"><div class="tmp-ph-icon">{icon}</div>'

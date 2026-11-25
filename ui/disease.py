@@ -6,14 +6,14 @@ import streamlit as st
 from trackmypdb.annotations import (DISEASE_CATEGORIES, add_disease_annotations,
                                     add_protein_info, matches_keywords)
 from trackmypdb.extraction import is_valid_uniprot_accession, parse_uniprot_ids
-from ui.style import page_header
+from ui.style import how_to, page_header
 from ui.common import download_csv, results_table
 
 SOURCES = {
     "Extracted ligands": "ligands",
     "Similarity ranking results": "similarity_hits",
-    "Database search results": "db_hits",
-    "Full pipeline results": "pipeline_hits",
+    "Quick Search results": "db_hits",
+    "Target Search results": "pipeline_hits",
 }
 
 
@@ -53,7 +53,15 @@ def _choose_input() -> tuple[pd.DataFrame | None, str]:
 
 
 def render() -> None:
-    page_header("Disease Enrichment", "Which diseases involve your targets?", icon="🩺")
+    page_header("Disease Enrichment", "See which diseases UniProt links to your protein "
+                "targets.", icon="🩺")
+    how_to([
+        "Choose results from another page, or enter UniProt IDs.",
+        "Click **Fetch disease annotations**.",
+        "Filter by disease area or your own keywords.",
+        "Download the table.",
+    ], tip="Results include every protein in the structures, such as partner proteins, "
+           "not only your target.")
 
     df, source_id = _choose_input()
     if df is None or df.empty:

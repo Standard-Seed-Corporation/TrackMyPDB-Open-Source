@@ -42,8 +42,8 @@ def assistant_page() -> None:
 PAGE_SPECS = [
     # key, render function, title, icon, url path
     ("home", home.render, "Home", ":material/home:", "home"),
-    ("search", database_search.render, "Database Search", ":material/manage_search:", "search"),
-    ("pipeline", pipeline.render, "Full Pipeline", ":material/route:", "pipeline"),
+    ("search", database_search.render, "Quick Search", ":material/bolt:", "quick-search"),
+    ("pipeline", pipeline.render, "Target Search", ":material/my_location:", "target-search"),
     ("extraction", extraction.render, "Ligand Extraction", ":material/science:", "extraction"),
     ("similarity", similarity.render, "Similarity Ranking", ":material/compare_arrows:",
      "similarity"),

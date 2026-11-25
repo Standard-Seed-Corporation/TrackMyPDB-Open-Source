@@ -1,4 +1,4 @@
-"""Database search page: similarity or substructure search in the bundled ligand database."""
+"""Quick Search page: similarity or substructure search in the built-in ligand library."""
 
 import pandas as pd
 import streamlit as st
@@ -9,7 +9,7 @@ from ui.common import (download_csv, ligand_database, ligand_mols, protein_info_
                        results_table, search_settings, similarity_charts, similarity_summary,
                        smiles_feedback, smiles_lines)
 from ui.molecules import EXAMPLES, hit_cards, query_preview
-from ui.style import page_header
+from ui.style import how_to, page_header
 from ui.viewer3d import structure_viewer
 
 SCAFFOLDS = {
@@ -43,8 +43,17 @@ def _run_similarity(queries, db, fps, settings) -> pd.DataFrame:
 
 
 def render() -> None:
-    page_header("Database Search", "Find similar PDB ligands, or every ligand with a scaffold.",
-                icon="🔎")
+    page_header("Quick Search", "Search the built-in PDB ligand library. Instant and offline, "
+                "no protein needed.", icon="🔎")
+    how_to([
+        "Choose **Similarity** (molecules like yours) or **Substructure** "
+        "(ligands containing a scaffold).",
+        "Click an example or paste a SMILES. Substructure also accepts SMARTS.",
+        "Click **Search**.",
+        "Explore the cards, pick a hit for the **3D view**, download the CSV or add "
+        "protein names.",
+    ], tip="The library covers about 2,600 PDB entries. For complete, up-to-date results "
+           "on a specific protein, use Target Search.")
 
     mode = st.segmented_control("Search type", ["Similarity", "Substructure"],
                                 default="Similarity", key="db_mode") or "Similarity"

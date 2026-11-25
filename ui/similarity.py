@@ -6,7 +6,7 @@ import streamlit as st
 from trackmypdb.similarity import InvalidSmilesError, rank_by_similarity
 from ui.molecules import hit_cards, query_preview
 from ui.viewer3d import structure_viewer
-from ui.style import page_header
+from ui.style import how_to, page_header
 from ui.common import (PAGES, download_csv, protein_info_step, results_table, search_settings,
                        similarity_charts, similarity_summary, smiles_feedback, smiles_lines)
 
@@ -38,7 +38,15 @@ def _ligand_source() -> pd.DataFrame | None:
 
 
 def render() -> None:
-    page_header("Similarity Ranking", "Rank ligands against your molecule.", icon="⚖️")
+    page_header("Similarity Ranking", "Rank a set of ligands, extracted here or uploaded as "
+                "CSV, against your molecule.", icon="⚖️")
+    how_to([
+        "Use the ligands from **Ligand Extraction**, or upload a CSV with a SMILES column.",
+        "Paste your query SMILES.",
+        "Optionally adjust **Search settings** (number of results, threshold, fingerprint).",
+        "Click **Rank ligands**.",
+    ], tip="Tanimoto similarity of Morgan fingerprints: 1.0 means identical; above about 0.4 "
+           "often means a shared scaffold.")
 
     ligands = _ligand_source()
     left, right = st.columns([3, 2], vertical_alignment="top")

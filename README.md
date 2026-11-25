@@ -58,8 +58,8 @@ Then open <http://localhost:8501>. A hosted version is available at
 
 | Page | What it does |
 |------|--------------|
-| Database Search | Similarity or substructure (scaffold) search in the bundled ligand database (offline, fast) |
-| Full Pipeline | UniProt IDs + query SMILES → ranked ligands in one step |
+| Quick Search | Similarity or substructure (scaffold) search in the built-in ligand library (offline, instant) |
+| Target Search | UniProt IDs + query SMILES → ligands from your proteins' live PDB structures, ranked |
 | Ligand Extraction | Ligand inventory of your proteins' PDB structures |
 | Similarity Ranking | Rank extracted or uploaded ligands against a query |
 | Molecule Viewer | 2D depiction and drug-likeness descriptors |

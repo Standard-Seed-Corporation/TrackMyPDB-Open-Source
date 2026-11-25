@@ -8,7 +8,7 @@ import streamlit as st
 
 from trackmypdb.properties import calculate_properties, draw_molecule
 from ui.molecules import mol_svg
-from ui.style import page_header
+from ui.style import how_to, page_header
 from ui.common import smiles_feedback, smiles_lines, timestamp
 
 
@@ -23,7 +23,13 @@ def _from_upload(upload) -> str | None:
 
 
 def render() -> None:
-    page_header("Molecule Viewer", "Structure and drug-likeness at a glance.", icon="🧪")
+    page_header("Molecule Viewer", "Draw any molecule and check its drug-likeness.", icon="🧪")
+    how_to([
+        "Type a SMILES, or upload a MOL/SDF file.",
+        "See the 2D structure and key properties (MW, cLogP, TPSA, H-bond donors/acceptors).",
+        "Download the image (PNG) or the properties (CSV).",
+    ], tip="Lipinski's rule of five: MW ≤ 500, cLogP ≤ 5, ≤ 5 H-bond donors, "
+           "≤ 10 H-bond acceptors.")
     tab1, tab2 = st.tabs(["Enter SMILES", "Upload file"])
     with tab1:
         typed = st.text_input("SMILES", placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O")

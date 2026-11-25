@@ -1,11 +1,11 @@
-"""Full pipeline page: UniProt IDs + query molecule -> ranked ligands."""
+"""Target Search page: UniProt IDs + query molecule -> ranked ligands from live PDB data."""
 
 import streamlit as st
 
 from trackmypdb.similarity import rank_by_similarity
 from ui.molecules import hit_cards, query_preview
 from ui.viewer3d import structure_viewer
-from ui.style import page_header
+from ui.style import how_to, page_header
 from ui.common import (download_csv, protein_info_step, results_table, run_extraction,
                        search_settings, similarity_charts, similarity_summary, smiles_feedback,
                        smiles_lines)
@@ -18,7 +18,14 @@ def _load_example() -> None:
 
 
 def render() -> None:
-    page_header("Full Pipeline", "Proteins + molecule → ranked ligands.", icon="🚀")
+    page_header("Target Search", "Start from your proteins: fetch their live PDB structures "
+                "and rank the bound ligands against your molecule.", icon="🎯")
+    how_to([
+        "Enter UniProt accessions (e.g. `P37231`), or click **Try an example**.",
+        "Paste your molecule's SMILES. The preview shows its structure.",
+        "Set **Max structures per protein**: 10 is quick, 0 uses all structures (slower).",
+        "Click **Run search**, then explore the cards, the 3D view and the table.",
+    ], tip="Needs internet. About 1 minute for 10 structures.")
     st.button("Try an example: PPAR-γ + rosiglitazone", icon=":material/auto_awesome:",
               on_click=_load_example)
 
@@ -32,7 +39,7 @@ def render() -> None:
     with right:
         query_preview(valid[0] if valid else None)
 
-    if st.button("Run pipeline", type="primary", icon=":material/rocket_launch:",
+    if st.button("Run search", type="primary", icon=":material/rocket_launch:",
                  disabled=not (ids and valid)):
         result = run_extraction(ids, limit)
         st.session_state["ligands"] = result.records

@@ -17,6 +17,11 @@ _TEMPLATE = """
 <div id="msg" style="font:13px sans-serif;color:#5F6368;margin-top:4px"></div>
 <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
 <script>
+if (typeof $3Dmol === "undefined") {
+  document.getElementById("msg").textContent =
+    "The 3D viewer could not be loaded. It needs an internet connection.";
+  throw new Error("3Dmol.js not available");
+}
 const pdb = __PDB__, lig = __LIG__;
 const msg = document.getElementById("msg");
 msg.textContent = "Loading " + pdb + " from RCSB PDB...";
@@ -37,7 +42,8 @@ fetch("https://files.rcsb.org/download/" + pdb + ".cif")
     msg.textContent = pdb + " · " + lig + " (green) with residues within 5 Å. "
                     + "Drag to rotate, scroll to zoom.";
   })
-  .catch(e => { msg.textContent = "Could not load " + pdb + " (" + e + ")."; });
+  .catch(e => { msg.textContent = "Could not load " + pdb + " (" + e + "). "
+                                 + "The 3D view needs an internet connection."; });
 </script>
 """
 

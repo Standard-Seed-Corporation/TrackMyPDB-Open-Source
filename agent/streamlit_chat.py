@@ -35,7 +35,14 @@ def _shared_key():
 
 def render() -> None:
     from ui.style import page_header
-    page_header("AI Assistant", "Ask in plain language. Claude runs the tools for you.", icon="🤖")
+    page_header("AI Assistant", "Ask questions in plain language. Claude runs the "
+                "TrackMyPDB tools for you.", icon="🤖")
+    from ui.style import how_to
+    how_to([
+        "Paste your Anthropic API key in the sidebar (kept only in this browser session).",
+        "Type a question, or open **Example prompts**.",
+        "Watch the tool calls, then read the answer.",
+    ], tip="Uses your own Anthropic account; usage is billed to your key.")
 
     api_key = _shared_key() or st.session_state.get("anthropic_api_key")
     with st.sidebar:

@@ -7,7 +7,6 @@ import re
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9]{1,12}$")
 
@@ -56,7 +55,11 @@ def binding_site_view(pdb_id: str, ligand_code: str, height: int = 460) -> None:
     page = (_TEMPLATE.replace("__H__", str(height))
             .replace("__PDB__", json.dumps(str(pdb_id).upper()))
             .replace("__LIG__", json.dumps(str(ligand_code).upper())))
-    components.html(page, height=height + 30)
+    if hasattr(st, "iframe"):          # Streamlit >= 1.56: st.iframe accepts an HTML string
+        st.iframe(page, height=height + 30)
+    else:                               # older Streamlit
+        import streamlit.components.v1 as components
+        components.html(page, height=height + 30)
 
 
 def structure_viewer(hits: pd.DataFrame, key: str, n: int = 25) -> None:

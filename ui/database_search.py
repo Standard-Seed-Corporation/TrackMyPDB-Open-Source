@@ -43,7 +43,7 @@ def _run_similarity(queries, db, fps, settings) -> pd.DataFrame:
 
 
 def render() -> None:
-    page_header("Quick Search", "Search the built-in PDB ligand library. Instant and offline, "
+    page_header("Quick Search", "Search the built-in PDB ligand library. Instant, "
                 "no protein needed.", icon="🔎")
     how_to([
         "Choose **Similarity** (molecules like yours) or **Substructure** "
@@ -52,8 +52,9 @@ def render() -> None:
         "Click **Search**.",
         "Explore the cards, pick a hit for the **3D view**, download the CSV or add "
         "protein names.",
-    ], tip="The library covers about 2,600 PDB entries. For complete, up-to-date results "
-           "on a specific protein, use Target Search.")
+    ], tip="Searches the built-in library, with no external database calls, so it is "
+           "instant. It covers about 2,600 PDB entries; for complete, up-to-date results on "
+           "a specific protein, use Target Search.")
 
     mode = st.segmented_control("Search type", ["Similarity", "Substructure"],
                                 default="Similarity", key="db_mode") or "Similarity"
